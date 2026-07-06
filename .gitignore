@@ -2,3 +2,9 @@ DecisionLog/
 scripts/
 .ai_rules.md
 WIP_STATE.md
+trustchain_credentials.cmake
+logs/
+tools/LogViewer/
+build/
+src/core/twitch_credentials.h
+

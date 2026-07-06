@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TwitchChannelManagementTool Default Overlay</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts Inter for modern clean typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Screensaver Canvas for background lines/morphing shapes -->
+    <canvas id="screensaverCanvas"></canvas>
+
+    <!-- Overlay Container for Bouncing Items -->
+    <div id="overlay-container">
+        <!-- Floating/Bouncing Main Logo Card -->
+        <div class="bouncing-card logo-card" id="logoCard">
+            <div class="glow-effect"></div>
+            <div class="card-content">
+                <div class="logo-title">Twitch Channel</div>
+                <div class="logo-sub">Management Tool</div>
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Connecting to server...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

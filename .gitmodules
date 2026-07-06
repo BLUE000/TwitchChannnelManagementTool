@@ -1,0 +1,6 @@
+[submodule "lib/TrustChain"]
+	path = lib/TrustChain
+	url = https://github.com/BLUE000/TrustChain.git
+[submodule "lib/TransCipher-Dist"]
+	path = lib/TransCipher-Dist
+	url = https://github.com/BLUE000/TransCipher-Dist.git

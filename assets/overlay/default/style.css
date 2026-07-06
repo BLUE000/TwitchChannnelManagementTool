@@ -1,0 +1,223 @@
+/* Reset and Base Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: transparent; /* Transparent background for OBS overlay */
+    font-family: 'Inter', sans-serif;
+}
+
+/* Background Canvas */
+#screensaverCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Container for all bouncing overlay items */
+#overlay-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* Bouncing Card Base with Glassmorphism & Neon Glow */
+.bouncing-card {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    border-radius: 16px;
+    background: rgba(15, 15, 25, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    color: #ffffff;
+    user-select: none;
+    pointer-events: auto;
+    overflow: hidden;
+    transition: border 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Logo Card Specific styling */
+.logo-card {
+    width: 280px;
+    height: 160px;
+    border: 1px solid rgba(147, 51, 234, 0.3); /* Purple accent */
+    box-shadow: 0 0 20px rgba(147, 51, 234, 0.15), inset 0 0 10px rgba(147, 51, 234, 0.05);
+}
+
+.logo-card:hover {
+    border-color: rgba(147, 51, 234, 0.8);
+    box-shadow: 0 0 30px rgba(147, 51, 234, 0.4);
+}
+
+/* Neon Glow Effect behind cards */
+.glow-effect {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(147, 51, 234, 0.1) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.card-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: space-between;
+}
+
+.logo-title {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #a855f7 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.logo-sub {
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 4px;
+}
+
+/* Status Indicator */
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #ef4444; /* Red for disconnected */
+    box-shadow: 0 0 8px #ef4444;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.status-dot.connected {
+    background-color: #10b981; /* Green for connected */
+    box-shadow: 0 0 8px #10b981;
+}
+
+#statusText {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Comment Bouncing Card */
+.comment-card {
+    min-width: 320px;
+    max-width: 450px;
+    border: 1px solid rgba(59, 130, 246, 0.25); /* Blue accent */
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.1);
+    animation: card-fade-in 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.comment-card:hover {
+    border-color: rgba(59, 130, 246, 0.7);
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.3);
+}
+
+/* Comment Header (User Info) */
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    object-fit: cover;
+}
+
+.user-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.user-badges {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    object-fit: contain;
+}
+
+.username {
+    font-size: 15px;
+    font-weight: 600;
+    color: #3b82f6;
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* Comment Body */
+.comment-body {
+    font-size: 14px;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.95);
+    word-break: break-word;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+/* Emote styling */
+.emote {
+    height: 24px;
+    vertical-align: middle;
+    object-fit: contain;
+}
+
+@keyframes card-fade-in {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

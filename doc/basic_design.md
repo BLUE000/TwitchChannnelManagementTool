@@ -1,0 +1,260 @@
+# TwitchChannelManagementTool 基本設計書 (ドラフト)
+
+本ドキュメントは、TwitchChannelManagementToolのアプリケーション本体コアにおける基本設計（システムアーキテクチャ、インターフェース、データ設計、UI設計）を定義するものです。
+
+---
+
+## 1. システムアーキテクチャ設計
+
+コアアプリケーションは、UI（表示層）、コア・コントローラ（制御層）、および外部通信モジュール（サービス層）に分離し、さらに動的ロードされたプラグインを制御する「プラグイン駆動アーキテクチャ」を採用します。
+
+```mermaid
+graph TD
+    subgraph UI層 [UI層 (GUI Thread)]
+        MainWindow["MainWindow (縦タブUI)"]
+        SettingsTab["共通設定画面 (プラグイン管理)"]
+    end
+
+    subgraph コントローラ層 [コントローラ層 (GUI Thread)]
+        AppController["AppController (コア制御)"]
+        PluginLoader["PluginLoader (DLL動的ロード)"]
+        SignalDispatcher["SignalDispatcher (下りシグナル仲介)"]
+    end
+
+    subgraph サービス層 [サービス層 (スレッド分離 / 独立モジュール)]
+        TwitchCollector["TwitchEventCollector (EventSub / IRC)"]
+        ObsServer["ObsHttpWebSocketServer (HTTP / WS)"]
+        TtsManager["TtsManager (音声合成連携窓口)"]
+        LoggerModule["LoggerModule (難読化ログ出力)"]
+    end
+
+    subgraph プラグイン層 [プラグイン層 (DLL)]
+        PluginA["Plugin A (DLL)"]
+        PluginB["Plugin B (DLL)"]
+    end
+
+    %% 下り方向 (シグナル)
+    MainWindow == 1.操作 ==> AppController
+    AppController -- 2.ディスパッチ --> SignalDispatcher
+    SignalDispatcher -- 3.Signal --> PluginA
+    SignalDispatcher -- 3.Signal --> PluginB
+    TwitchCollector -. 2.受信通知 .-> AppController
+
+    %% 上り方向 (イベント)
+    PluginA == 1.Event (postEvent) ==> AppController
+    PluginB == 1.Event (postEvent) ==> AppController
+    AppController -- 2.通知 --> MainWindow
+    AppController -- 3.要求 --> TtsManager
+    AppController -- 3.要求 --> ObsServer
+
+    %% ログ出力関係
+    AppController -. ログ記録 .-> LoggerModule
+    TwitchCollector -. ログ記録 .-> LoggerModule
+    ObsServer -. ログ記録 .-> LoggerModule
+    TtsManager -. ログ記録 .-> LoggerModule
+
+```
+
+### 1.1. モジュール構成・ディレクトリ構造
+本プロジェクトは、機能ごとに明確にディレクトリを分割して各コンポーネントの責任範囲を分離します。
+
+```
+TwitchChannelManagementTool/
+├── doc/                      # 要件定義・基本/詳細設計書
+├── lib/                      # 依存ライブラリ (Gitサブモジュール)
+│   ├── TrustChain/           # ビルド時検証・署名モジュール
+│   └── TransCipher-Dist/     # 暗号化・難読化モジュール
+├── src/                      # アプリケーションソースコード
+│   ├── main.cpp              # エントリーポイント
+│   ├── core/                 # アプリケーション制御・管理層
+│   │   ├── AppController     # メインロジックコントローラ
+│   │   ├── PluginLoader      # QPluginLoaderによるDLLロード制御
+│   │   └── SignalDispatcher  # 下りシグナルの仲介役
+│   ├── modules/              # 各独立機能モジュール（サービス層）
+│   │   ├── logger/           # 難読化ログ出力モジュール
+│   │   ├── twitch/           # Twitch接続・Helix API・EventSubクライアント
+│   │   ├── obs/              # OBS連携用HTTP/WebSocketサーバー
+│   │   └── tts/              # 音声合成ツール連携モジュール
+│   │       ├── ITtsClient.h  # 共通抽象インターフェース
+│   │       ├── BouyomiClient # 棒読みちゃん用固有実装 (TCP)
+│   │       ├── VoiceVoxClient # VOICEVOX用固有実装 (REST API)
+│   │       └── TtsManager    # 動的切替・スレッド実行制御
+│   ├── ui/                   # ユーザーインターフェース（GUI画面層）
+│   │   ├── MainWindow        # メインウィンドウ (縦タブUI)
+│   │   └── SettingsTab       # 共通設定画面 (プラグイン一覧表示を含む)
+│   └── shared/               # プラグイン・本体の共通インターフェース
+│       └── plugin_interface.h # 共通構造体および抽象クラス定義
+├── logs/                     # 実行時ログ保存用フォルダ (Git管理外)
+└── CMakeLists.txt            # ビルドスクリプト定義
+```
+
+### 1.2. スレッド分離モデル (Thread Isolation)
+GUIのフリーズを防ぐため、ソケット通信やI/Oを伴うサービス層はそれぞれバックグラウンドスレッド（`QThread`）上で稼働させます。
+* `TwitchEventCollector` (WebSocket / RESTスレッド)
+* `ObsHttpWebSocketServer` (HTTP / WebSocketサーバースレッド)
+* `TtsManager` (音声合成連携制御スレッド)
+
+---
+
+## 2. 通信プロトコル＆フロー設計
+
+### 2.1. 下り方向の通信（シグナル方式）
+* **フロー**: `画面 (UI)` ➔ `コア` ➔ `各モジュール` ➔ `プラグイン`
+* **設計**:
+  * コア内に `SignalDispatcher` を定義し、画面操作やTwitchイベントのシグナルを集約します。
+  * 各プラグインの読み込み時に、`SignalDispatcher` の各シグナルとプラグインのハンドラ（スロット）を `Qt::QueuedConnection`（スレッド間安全な非同期接続）で自動的に接続します。
+
+### 2.2. 上り方向の通信（イベント方式）
+* **フロー**: `プラグイン` ➔ `各モジュール` ➔ `コア` ➔ `画面`
+* **設計**:
+  * コア側（`AppController` / `MainWindow`）に `onNotifyEvents(QEvent* event)` という統合イベント受信ハンドラを実装します。
+  * プラグインが本体に対して処理要求（読み上げ要求、チャット送信、OBS表示等）を行う際は、カスタムイベントクラス `PluginNotifyEvent` をインスタンス化し、`QCoreApplication::postEvent()` を用いて非同期でスレッドセーフにコアにイベントを送信します。
+
+---
+
+## 3. プラグイン・インターフェース設計
+
+各プラグインは以下のC++インターフェース（`IChannelPlugin`）を実装したDLLとして作成されます。
+
+```cpp
+#pragma once
+#include <QtPlugin>
+#include <QWidget>
+#include <QJsonObject>
+#include <QMap>
+
+// --- データ構造定義 ---
+struct TwitchComment {
+    QString id;
+    QString userId;
+    QString username;
+    QString displayName;
+    QString comment;
+    QString avatarUrl;
+    QJsonArray badges;
+    qint64 timestamp;
+};
+
+struct TwitchRewardRedemption {
+    QString id;
+    QString rewardId;
+    QString rewardName;
+    QString userId;
+    QString username;
+    QString displayName;
+    QString userInput;
+    qint64 timestamp;
+};
+
+// --- コアコンテキスト（プラグインからコアへのAPI） ---
+class ICoreContext {
+public:
+    virtual ~ICoreContext() = default;
+    
+    // コアへの直接要求 (非同期)
+    virtual void sendChatMessage(const QString& message) = 0;
+    virtual void requestTts(const QString& text, const QString& speakerId, int speed, int pitch, int volume) = 0;
+    virtual void sendToObs(const QString& action, const QJsonObject& payload) = 0;
+    virtual void postDiscordWebhook(const QString& webhookUrl, const QJsonObject& payload) = 0; // 追加：Discord Webhook送信代行
+    
+    // パス・セキュリティキー取得
+    virtual QString getPluginDirectory() const = 0;
+    virtual QString getCipherKey() const = 0;
+};
+
+// --- プラグインインターフェース ---
+class IChannelPlugin {
+public:
+    virtual ~IChannelPlugin() = default;
+    
+    // 初期化 & 破棄
+    virtual void initialize(ICoreContext* context) = 0;
+    virtual void shutdown() = 0;
+    
+    // プラグイン情報
+    virtual QString pluginId() const = 0;
+    virtual QString pluginName() const = 0;
+    virtual QString pluginVersion() const = 0;
+    virtual QString pluginDescription() const = 0; // プラグイン詳細説明
+    virtual QByteArray iconPngData() const = 0;   // タブ用アイコン画像 (PNGバイナリデータ)
+    virtual QMap<QString, QByteArray> defaultAssets() const = 0; // 内蔵デフォルトアセット
+    
+    // GUIの提供（UIを持たないバックグラウンドプラグインの場合は nullptr を返す）
+    virtual QWidget* createWidget(QWidget* parent = nullptr) = 0;
+    
+    // 下りシグナルのハンドリング用スロットメソッド
+    virtual void onCommentReceived(const TwitchComment& comment) = 0;
+    virtual void onRewardRedeemed(const TwitchRewardRedemption& redemption) = 0;
+    virtual void onTick() = 0; // 1秒ごとのタイマーイベント
+};
+
+#define IChannelPlugin_iid "com.blue000.twitchchannelmanagementtool.IChannelPlugin"
+Q_DECLARE_INTERFACE(IChannelPlugin, IChannelPlugin_iid)
+```
+
+---
+
+## 4. データ保存・難読化（TransCipher）設計
+
+各プラグインは、自身の難読化設定ファイルを個々のディレクトリ以下に保持します。
+
+### 4.1. 難読化プロセスフロー (保存時)
+1. プラグインは自身のデータを JSON（`QJsonObject`）として構築する。
+2. JSONを `QJsonDocument::toJson(QJsonDocument::Compact)` でバイト配列（`QByteArray`）にシリアライズする。
+3. コアから提供された固定キー（`ICoreContext::getCipherKey()`）を用いて、TransCipherのエンジンで難読化処理を行う。
+   `CipherResult result = CipherEngine::encrypt(jsonData, cipherKey, AesMode::Mandatory);`
+4. 難読化が成功したら、返されたバイナリデータ（`result.data()`）を、プラグインの専用フォルダ内の `config.bin` として直接書き出す。
+
+### 4.2. 難読化解除プロセスフロー (読み込み時)
+1. プラグインの専用フォルダから `config.bin` をバイト配列としてロードする。
+2. コアの固定キーを用いて `CipherEngine::decrypt(encryptedData, cipherKey)` を実行し、難読化を解除する。
+3. 復元されたバイト配列を `QJsonDocument::fromJson()` にかけて JSON オブジェクトへ復元し、設定値をメモリ上に展開する。
+
+## 5. ログ出力基本設計 (本体コア・独立モジュール)
+
+本体コアおよび各サービス・UIは、セキュリティおよび動作検証のためのシステムログを、独立した共通の `Logger` モジュール（`src/modules/logger/`）を介してファイル出力します。
+
+### 5.1. ログ形式 (フォーマット)
+`[YYYY-MM][DD-HH-mm-ss][Action][Class][Func][Description]`
+
+### 5.2. 難読化と追記保存
+- 各ログ出力の実行時、1行ごとに上記フォーマットの文字列を構築し、本体に定義された共通の難読化キーを用いて `TransCipher` で難読化（`CipherEngine::encrypt`）します。
+- 難読化されたデータは Base64 文字列として、ログファイルに1行ずつ追記（Append）保存されます（これにより、1行ごとの非同期デコードが可能）。
+
+### 5.3. ログファイルの分割
+- ログファイルは月ごとに分割し、ファイル名を `YYYY-MM.log`（例：`2026-07.log`）として `logs/` ディレクトリに保存します。
+
+---
+
+## 6. プラグイン・アセット配信基本設計 (OBS連携用)
+
+プラグインがOBSなどの配信ソフトに表示するブラウザソース用HTMLオーバーレイなどのアセットは、本体コアが動作する静的HTTPサーバーから一括配信されます。
+
+### 6.1. ディレクトリ構成
+プラグインがロードされると、そのデフォルトアセットが `assets/` フォルダ配下にプラグイン名を用いたディレクトリ名で配置・展開されます。
+
+```
+assets/
+└── overlay/
+    └── [プラグイン名]/
+        ├── default/     # プラグインから展開されたデフォルトアセット（コアが書き出す領域）
+        └── custom/      # ユーザーが編集・追加するカスタムアセット（コアは変更しない領域）
+```
+
+### 6.2. 展開および上書き制限ルール
+- **自動展開**: プラグインロード時、本体コアはプラグインの `defaultAssets()` を呼び出し、内蔵されているアセット（HTML, CSS, JS等）を `assets/overlay/[プラグイン名]/default/` 配下に自動的に書き出します。
+- **上書き制限（安全第一）**: ユーザーのカスタマイズが消去されるのを防ぐため、**出力先に同名ファイルがすでに存在する場合、本体コアは自動での上書き（書き出し）を行いません。**
+- **初期化**: ユーザーがデフォルト状態にリセットしたい場合は、ローカルの `default/` フォルダをフォルダごと削除してアプリを再ロード（または再起動）することで、再度デフォルトファイルが自動生成されます。
+
+### 6.3. HTTP配信仕様
+* **接続ポートおよび配信URL**:
+  - デフォルトアセット: `http://[ホスト名]:8081/overlay/[プラグイン名]/default/index.html`
+  - カスタムアセット: `http://[ホスト名]:8081/overlay/[プラグイン名]/custom/index.html`
+* **LAN内マルチPC接続仕様**:
+  - 同一LAN内の別PCに配置されたOBSからの接続を受け入れるため、本体HTTPサーバーは `QHostAddress::Any`（`0.0.0.0`）にバインドしてすべてのネットワークインターフェースからのリクエストをリッスンします。
+  - クロスドメインエラーを防止するため、HTTP応答には `Access-Control-Allow-Origin: *` などのCORS許可ヘッダーを付与します。
+
+
+
+
+
