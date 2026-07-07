@@ -70,4 +70,11 @@ foreach(TEST_TARGET run_unit_tests run_integration_tests)
         target_link_libraries(${TEST_TARGET} PRIVATE Crypt32 winmm)
     endif()
     add_test(NAME ${TEST_TARGET} COMMAND ${TEST_TARGET})
+    
+    # DLLのテストビルドディレクトリへの自動コピー
+    add_custom_command(TARGET ${TEST_TARGET} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "${CMAKE_SOURCE_DIR}/lib/TransCipher-Dist/lib/libTransCipher.dll"
+            "$<TARGET_FILE_DIR:${TEST_TARGET}>/libTransCipher.dll"
+    )
 endforeach()

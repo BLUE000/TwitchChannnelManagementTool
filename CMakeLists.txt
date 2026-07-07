@@ -105,6 +105,16 @@ endif()
 include(lib/TrustChain/cmake/trustchain.cmake)
 trustchain_setup_target(${MAIN_TARGET})
 
+# アセットおよびDLLのビルドディレクトリへの自動コピー
+add_custom_command(TARGET ${MAIN_TARGET} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/pic"
+        "$<TARGET_FILE_DIR:${MAIN_TARGET}>/pic"
+    COMMAND ${CMAKE_COMMAND} -E copy
+        "${CMAKE_CURRENT_SOURCE_DIR}/lib/TransCipher-Dist/lib/libTransCipher.dll"
+        "$<TARGET_FILE_DIR:${MAIN_TARGET}>/libTransCipher.dll"
+)
+
 # テストビルド
 if (BUILD_TESTING)
     enable_testing()
