@@ -85,14 +85,46 @@ void MainWindow::setupUiManual() {
 
 void MainWindow::applyTheme() {
     QString qss = R"(
-        QMainWindow {
+        /* 全体背景と標準フォント色 */
+        QMainWindow, QScrollArea, QScrollArea > QWidget {
             background-color: #0F0F12;
+            color: #E2E8F0;
         }
+        
+        /* ラベルの文字色 */
+        QLabel {
+            color: #E2E8F0;
+        }
+        
+        /* ラジオボタンのスタイル */
+        QRadioButton {
+            color: #E2E8F0;
+            spacing: 6px;
+        }
+        
+        /* グループボックスのスタイル */
+        QGroupBox {
+            border: 1px solid #2D2D3A;
+            border-radius: 8px;
+            margin-top: 16px;
+            padding-top: 16px;
+            font-weight: bold;
+            color: #9146FF;
+            background-color: #16161F;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            left: 12px;
+            padding: 0 4px;
+        }
+        
+        /* 左サイドバー */
         QListWidget#sidebar {
             background-color: #16161F;
             border: none;
             border-right: 1px solid #2D2D3A;
-            color: #E2E8F0;
+            color: #A0AEC0;
             font-size: 14px;
             padding-top: 10px;
         }
@@ -111,35 +143,24 @@ void MainWindow::applyTheme() {
             color: #FFFFFF;
             font-weight: bold;
         }
-        QGroupBox {
-            border: 1px solid #2D2D3A;
-            border-radius: 8px;
-            margin-top: 12px;
-            padding-top: 12px;
-            font-weight: bold;
-            color: #A0AEC0;
-            background-color: #16161F;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            subcontrol-position: top left;
-            left: 10px;
-            padding: 0 4px;
-        }
+        
+        /* 入力エリア */
         QLineEdit, QSpinBox, QComboBox {
             background-color: #22222E;
             border: 1px solid #2D2D3A;
-            border-radius: 4px;
-            padding: 6px;
+            border-radius: 6px;
+            padding: 6px 10px;
             color: #F7FAFC;
         }
         QLineEdit:focus, QSpinBox:focus, QComboBox:focus {
             border: 1px solid #9146FF;
         }
+        
+        /* プッシュボタン */
         QPushButton {
             background-color: #2D2D3E;
             border: 1px solid #3F3F56;
-            border-radius: 4px;
+            border-radius: 6px;
             padding: 8px 16px;
             color: #F7FAFC;
             font-weight: bold;
@@ -151,10 +172,17 @@ void MainWindow::applyTheme() {
         QPushButton:pressed {
             background-color: #1A1A28;
         }
+        
+        /* ステータスバー */
         QStatusBar {
             background-color: #12121A;
             border-top: 1px solid #2D2D3A;
             color: #A0AEC0;
+        }
+        QStatusBar QLabel {
+            color: #A0AEC0;
+            background: transparent;
+            border: none;
         }
     )";
     this->setStyleSheet(qss);
