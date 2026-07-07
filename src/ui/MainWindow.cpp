@@ -102,10 +102,6 @@ void MainWindow::applyTheme() {
         QListWidget#sidebar::item:hover {
             background-color: #E4E7EC; /* システム標準に近い薄いグレーのホバー色 */
         }
-        QListWidget#sidebar::item:selected {
-            background-color: #9146FF; /* 選択状態は識別しやすくするためTwitchカラーを維持 */
-            color: #FFFFFF;
-        }
         
         /* ステータスバー */
         QStatusBar {
