@@ -60,6 +60,8 @@ void MainWindow::setupUiManual() {
     m_sidebar->setFixedWidth(80);
     m_sidebar->setIconSize(QSize(48, 48));
     m_sidebar->setFrameShape(QFrame::NoFrame);
+    m_sidebar->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_sidebar->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     connect(m_sidebar, &QListWidget::currentRowChanged, this, &MainWindow::onSidebarSelectionChanged);
 
     // 右メインコンテンツ領域 (QStackedWidget)
@@ -125,6 +127,7 @@ void MainWindow::applyTheme() {
             border: none;
             border-right: 1px solid #2D2D3A;
             padding-top: 10px;
+            outline: none;
         }
         QListWidget#sidebar::item {
             padding: 6px;
