@@ -57,8 +57,8 @@ void MainWindow::setupUiManual() {
     // 左サイドバー (QListWidget)
     m_sidebar = new QListWidget(centralWidget);
     m_sidebar->setObjectName("sidebar");
-    m_sidebar->setFixedWidth(180);
-    m_sidebar->setIconSize(QSize(24, 24));
+    m_sidebar->setFixedWidth(80);
+    m_sidebar->setIconSize(QSize(48, 48));
     m_sidebar->setFrameShape(QFrame::NoFrame);
     connect(m_sidebar, &QListWidget::currentRowChanged, this, &MainWindow::onSidebarSelectionChanged);
 
@@ -124,24 +124,18 @@ void MainWindow::applyTheme() {
             background-color: #16161F;
             border: none;
             border-right: 1px solid #2D2D3A;
-            color: #A0AEC0;
-            font-size: 14px;
             padding-top: 10px;
         }
         QListWidget#sidebar::item {
-            padding: 12px 16px;
+            padding: 6px;
             border-radius: 8px;
-            margin: 4px 8px;
-            color: #A0AEC0;
+            margin: 6px 8px;
         }
         QListWidget#sidebar::item:hover {
             background-color: #2D2D3D;
-            color: #FFFFFF;
         }
         QListWidget#sidebar::item:selected {
             background-color: #9146FF;
-            color: #FFFFFF;
-            font-weight: bold;
         }
         
         /* 入力エリア */
@@ -311,7 +305,8 @@ void MainWindow::syncPluginTabs() {
             }
         }
         
-        sidebarItem->setText(name);
+        sidebarItem->setText("");
+        sidebarItem->setToolTip(name);
         if (!iconPng.isEmpty()) {
             QPixmap pix;
             if (pix.loadFromData(iconPng, "PNG")) {
@@ -326,7 +321,8 @@ void MainWindow::syncPluginTabs() {
     m_stackedWidget->addWidget(m_settingsTab);
     
     QListWidgetItem* settingsItem = new QListWidgetItem(m_sidebar);
-    settingsItem->setText("⚙️ 設定");
+    settingsItem->setText("");
+    settingsItem->setToolTip("設定");
     
     QString iconPath = QDir(appDir).filePath("pic/Config.png");
     if (QFile::exists(iconPath)) {
