@@ -63,6 +63,8 @@ struct TwitchRewardRedemption {
 | `void postDiscordWebhook(const QString& webhookUrl, const QJsonObject& payload)` | 指定したDiscord Webhook URLへ、JSONペイロードを非同期で送信します（安全なスレッド処理をコアが代行）。 |
 | `QString getPluginDirectory() const` | プラグイン固有のプライベートデータ保存用ディレクトリパスを取得します。 |
 | `QString getCipherKey() const` | ログやデータの暗号化・難読化に利用する共通シークレットキーを取得します。 |
+| `bool writeEncryptedFile(const QString& relativePath, const QByteArray& data)` | 平文データと相対ファイル名を受け取り、TransCipherで暗号化してファイルへ新規上書き保存します。 |
+| `QByteArray readEncryptedFile(const QString& relativePath)` | 暗号化されたファイルを読み込み、TransCipherで復号した平文のデータを返却します（ファイル不在時は空データを返却）。 |
 
 ---
 

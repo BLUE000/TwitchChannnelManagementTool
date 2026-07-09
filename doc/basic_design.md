@@ -160,6 +160,10 @@ public:
     // パス・セキュリティキー取得
     virtual QString getPluginDirectory() const = 0;
     virtual QString getCipherKey() const = 0;
+
+    // 暗号化ファイルI/O (透過的なTransCipher保護、新規追加)
+    virtual bool writeEncryptedFile(const QString& relativePath, const QByteArray& data) = 0;
+    virtual QByteArray readEncryptedFile(const QString& relativePath) = 0;
 };
 
 // --- プラグインインターフェース ---
@@ -194,21 +198,23 @@ Q_DECLARE_INTERFACE(IChannelPlugin, IChannelPlugin_iid)
 
 ---
 
-## 4. データ保存・難読化（TransCipher）設計
+## 4. データ保存・暗号化（TransCipher）設計
 
-各プラグインは、自身の難読化設定ファイルを個々のディレクトリ以下に保持します。
+プラグインのデータ保護は、本体コア（ホストアプリ）が提供する `ICoreContext` のインターフェースを通じて行います。プラグイン側は暗号化キーをハンドリングせず、平文データと相対ファイル名のみを指定します。
 
-### 4.1. 難読化プロセスフロー (保存時)
-1. プラグインは自身のデータを JSON（`QJsonObject`）として構築する。
-2. JSONを `QJsonDocument::toJson(QJsonDocument::Compact)` でバイト配列（`QByteArray`）にシリアライズする。
-3. コアから提供された固定キー（`ICoreContext::getCipherKey()`）を用いて、TransCipherのエンジンで難読化処理を行う。
-   `CipherResult result = CipherEngine::encrypt(jsonData, cipherKey, AesMode::Mandatory);`
-4. 難読化が成功したら、返されたバイナリデータ（`result.data()`）を、プラグインの専用フォルダ内の `config.bin` として直接書き出す。
+### 4.1. 暗号化保存プロセスフロー (保存時)
+1. プラグインは自身のデータを JSON（`QJsonObject`）等のバイト配列（`QByteArray`）として平文のまま構築する。
+2. プラグインは保存先相対パス（例: `"config.json"`）とデータを指定し、`ICoreContext::writeEncryptedFile(relativePath, plainData)` を呼び出す。
+3. 本体コアは、受け取ったパスの安全性を検証（`..` によるディレクトリトラバーサル防止）の上、保存先の絶対パス（`getPluginDirectory() / relativePath`）を決定する。
+4. 本体コア内部で、TransCipher 方式（共通難読化キー）によりデータを暗号化する。
+5. 暗号化したデータ（Base64形式等）を、対象ファイルへ上書き保存（Write, Truncate）する。
 
-### 4.2. 難読化解除プロセスフロー (読み込み時)
-1. プラグインの専用フォルダから `config.bin` をバイト配列としてロードする。
-2. コアの固定キーを用いて `CipherEngine::decrypt(encryptedData, cipherKey)` を実行し、難読化を解除する。
-3. 復元されたバイト配列を `QJsonDocument::fromJson()` にかけて JSON オブジェクトへ復元し、設定値をメモリ上に展開する。
+### 4.2. 復号読み込みプロセスフロー (読み込み時)
+1. プラグインは `ICoreContext::readEncryptedFile(relativePath)` を呼び出す。
+2. 本体コアは、パスの安全性を検証の上、対象ファイルから暗号化データを読み込む。
+3. 本体コア内部で、暗号化キーを用いて TransCipher による復号処理を実行する。
+4. 復号された生のバイト配列（平文データ）をプラグインへ返却する。（ファイルが存在しない、または復号失敗時は空の `QByteArray()` が返される）。
+5. プラグインは返却された平文のバイト配列を復元し、メモリ上に展開する。
 
 ## 5. ログ出力基本設計 (本体コア・独立モジュール)
 

@@ -39,6 +39,16 @@
 * **UT_LDR_004: アイコン画像変換テスト**
   - **検証内容**:
     - プラグインが返した `iconPngData()` の `QByteArray` から `QPixmap::loadFromData` を用いて、破損なく正常に `QPixmap` オブジェクトがデコード・生成できることを確認する。
+* **UT_LDR_005: 暗号化ファイルI/Oテスト (ICoreContext::writeEncryptedFile / readEncryptedFile)**
+  - **検証内容**:
+    1. プラグインコンテキストに対し、相対ファイル名（例: `"config.json"`, `"sub/data.txt"`) と任意の平文データを指定して `writeEncryptedFile()` を呼び出した際、ファイルが自動生成され、中身が TransCipher によって正しく暗号化されて保存されること。
+    2. 保存されたファイルに対して `readEncryptedFile()` を呼び出した際、自動で復号が行われ、元の平文データと完全一致するデータが取得できること。
+    3. 存在しないファイルパスを指定して `readEncryptedFile()` を呼び出した際、エラーや例外を起こさずに安全に空の `QByteArray()` が返却されること。
+    4. 既存のファイルに対して再度 `writeEncryptedFile()` を呼び出した際、以前のデータがクリアされて上書き保存（PHPでの `fopen("w")` と同等）されること。
+* **UT_LDR_006: ディレクトリトラバーサル防止テスト (パス安全性検証)**
+  - **検証内容**:
+    1. `writeEncryptedFile()` および `readEncryptedFile()` の相対パス引数に、`"../outside.txt"` のように親ディレクトリを参照するパスや、絶対パス（例: `"C:/Windows/system32/cmd.exe"`, `"/etc/passwd"`) を指定した際、ホスト側で不正アクセスとして安全に処理が拒否されること（書き込み時は `false` を返し、読み込み時は空データを返す）。
+    2. これにより、プラグインが割り当てられた固有ディレクトリ（`plugins/[PluginId]/`）の外部にあるファイルに対してアクセス・改ざんできないセキュアな設計になっていること。
 
 
 ### 2.3. TTS連携モジュール単体テスト (`src/modules/tts/`)
