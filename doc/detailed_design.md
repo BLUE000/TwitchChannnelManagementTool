@@ -314,6 +314,14 @@ private:
   6. `logs/` ディレクトリ配下の `{dateMonth}.log` ファイルに、追記モードで書き込みを行う。
      ※ ログ出力の1回ごとに1行の Base64 文字列として追記するため、読み込み側では改行区切りで1行ずつ取り出して復号することが可能です。
 
+### 5.3. プラグインからのログ出力委譲
+* プラグインが独自にログファイルを作成・暗号化するのではなく、ホスト側のロギング機能へ統合できるよう `ICoreContext::writeLog` を提供します。
+* **ログ転送の挙動**:
+  1. プラグインは `ICoreContext::writeLog(level, className, funcName, description)` を呼び出します。
+  2. ホスト側の `PluginContext` は、受け取った引数をそのまま本体コア `AppController::writeLog` へ中継します。
+  3. 本体コアは `Logger::instance().log(level, className, funcName, description)` を呼び出します。
+  4. ホストのログファイル（`logs/YYYY-MM.log`）に、プラグインから送られたログ内容が他のシステムログと同様に TransCipher で暗号化され、時系列順に追記されます。
+
 ---
 
 ## 6. プラグイン・アセット配信詳細設計 (OBS連携用)

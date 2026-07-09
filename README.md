@@ -65,6 +65,7 @@ struct TwitchRewardRedemption {
 | `QString getCipherKey() const` | ログやデータの暗号化・難読化に利用する共通シークレットキーを取得します。 |
 | `bool writeEncryptedFile(const QString& relativePath, const QByteArray& data)` | 平文データと相対ファイル名を受け取り、TransCipherで暗号化してファイルへ新規上書き保存します。 |
 | `QByteArray readEncryptedFile(const QString& relativePath)` | 暗号化されたファイルを読み込み、TransCipherで復号した平文のデータを返却します（ファイル不在時は空データを返却）。 |
+| `void writeLog(const QString& level, const QString& className, const QString& funcName, const QString& description)` | ホスト側のロギング機能（TransCipherでの暗号化）を利用して、システムログにログエントリを記録します。 |
 
 ---
 

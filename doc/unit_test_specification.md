@@ -49,6 +49,10 @@
   - **検証内容**:
     1. `writeEncryptedFile()` および `readEncryptedFile()` の相対パス引数に、`"../outside.txt"` のように親ディレクトリを参照するパスや、絶対パス（例: `"C:/Windows/system32/cmd.exe"`, `"/etc/passwd"`) を指定した際、ホスト側で不正アクセスとして安全に処理が拒否されること（書き込み時は `false` を返し、読み込み時は空データを返す）。
     2. これにより、プラグインが割り当てられた固有ディレクトリ（`plugins/[PluginId]/`）の外部にあるファイルに対してアクセス・改ざんできないセキュアな設計になっていること。
+* **UT_LDR_007: PluginContext ログ出力テスト (ICoreContext::writeLog)**
+  - **検証内容**:
+    1. `PluginContext::writeLog()` を呼び出して任意のテストログを出力した際、ホスト側の `Logger` シングルトンを経由して `logs/` ディレクトリ内に暗号化ログファイルが正常に生成されること。
+    2. 生成されたログファイルを読み込み、復号した際に、出力したログレベル（level）、クラス名（className）、関数名（funcName）、説明文（description）がフォーマット通りに記録されていることを検証する。
 
 
 ### 2.3. TTS連携モジュール単体テスト (`src/modules/tts/`)
