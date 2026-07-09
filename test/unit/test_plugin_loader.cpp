@@ -101,8 +101,18 @@ public:
     QString getCipherKey() const override { return "TestKey1234567890"; }
     bool writeEncryptedFile(const QString&, const QByteArray&) override { return false; }
     QByteArray readEncryptedFile(const QString&) override { return QByteArray(); }
+    void writeLog(const QString& level, const QString& className, const QString& funcName, const QString& description) override {
+        m_lastLevel = level;
+        m_lastClass = className;
+        m_lastFunc = funcName;
+        m_lastDesc = description;
+    }
 
     QString m_dir;
+    QString m_lastLevel;
+    QString m_lastClass;
+    QString m_lastFunc;
+    QString m_lastDesc;
 };
 
 // UT_LDR_005: 暗号化ファイルI/Oテスト (ICoreContext::writeEncryptedFile / readEncryptedFile)
@@ -169,5 +179,20 @@ TEST_F(PluginLoaderTest, UT_LDR_006_PathSafetyVerification) {
 #endif
     EXPECT_FALSE(context.writeEncryptedFile(absolutePath, testData));
     EXPECT_TRUE(context.readEncryptedFile(absolutePath).isEmpty());
+}
+
+// UT_LDR_007: PluginContext ログ出力テスト (ICoreContext::writeLog)
+TEST_F(PluginLoaderTest, UT_LDR_007_WriteLogForwarding) {
+    MockCoreContextForIoTests baseContext;
+    PluginContext context(&baseContext, "test_plugin");
+
+    // PluginContextからログを出力する
+    context.writeLog("WARN", "TestPluginClass", "testMethod", "This is a test warning message");
+
+    // ベースコンテキスト（スパイ）に正しく引数が転送されていることを検証
+    EXPECT_EQ(baseContext.m_lastLevel, "WARN");
+    EXPECT_EQ(baseContext.m_lastClass, "TestPluginClass");
+    EXPECT_EQ(baseContext.m_lastFunc, "testMethod");
+    EXPECT_EQ(baseContext.m_lastDesc, "This is a test warning message");
 }
 

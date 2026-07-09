@@ -47,6 +47,7 @@ public:
     QString getCipherKey() const override;
     bool writeEncryptedFile(const QString& relativePath, const QByteArray& data) override;
     QByteArray readEncryptedFile(const QString& relativePath) override;
+    void writeLog(const QString& level, const QString& className, const QString& funcName, const QString& description) override;
 
     // モジュールへのゲッター
     PluginLoader* pluginLoader() const { return m_pluginLoader; }

@@ -32,6 +32,7 @@ public:
 
     bool writeEncryptedFile(const QString& relativePath, const QByteArray& data) override;
     QByteArray readEncryptedFile(const QString& relativePath) override;
+    void writeLog(const QString& level, const QString& className, const QString& funcName, const QString& description) override;
 
 private:
     ICoreContext* m_base;

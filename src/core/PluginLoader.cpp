@@ -109,6 +109,10 @@ QByteArray PluginContext::readEncryptedFile(const QString& relativePath) {
     return result.data();
 }
 
+void PluginContext::writeLog(const QString& level, const QString& className, const QString& funcName, const QString& description) {
+    m_base->writeLog(level, className, funcName, description);
+}
+
 PluginLoader::PluginLoader(QObject* parent) : QObject(parent) {}
 
 PluginLoader::~PluginLoader() {

@@ -217,3 +217,7 @@ QByteArray AppController::readEncryptedFile(const QString& relativePath) {
     Q_UNUSED(relativePath);
     return QByteArray();
 }
+
+void AppController::writeLog(const QString& level, const QString& className, const QString& funcName, const QString& description) {
+    Logger::instance().log(level, className, funcName, description);
+}

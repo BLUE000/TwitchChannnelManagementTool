@@ -48,6 +48,9 @@ public:
     // 暗号化ファイルI/O (透過的なTransCipher保護、新規追加)
     virtual bool writeEncryptedFile(const QString& relativePath, const QByteArray& data) = 0;
     virtual QByteArray readEncryptedFile(const QString& relativePath) = 0;
+
+    // 暗号化システムログ出力 (新規追加)
+    virtual void writeLog(const QString& level, const QString& className, const QString& funcName, const QString& description) = 0;
 };
 
 // --- プラグインインターフェース ---
