@@ -44,6 +44,10 @@ public:
     // パス・セキュリティキー取得
     virtual QString getPluginDirectory() const = 0;
     virtual QString getCipherKey() const = 0;
+
+    // 暗号化ファイルI/O (透過的なTransCipher保護、新規追加)
+    virtual bool writeEncryptedFile(const QString& relativePath, const QByteArray& data) = 0;
+    virtual QByteArray readEncryptedFile(const QString& relativePath) = 0;
 };
 
 // --- プラグインインターフェース ---

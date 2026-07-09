@@ -89,3 +89,85 @@ TEST_F(PluginLoaderTest, UT_LDR_003_AssetExtraction) {
     file.close();
     EXPECT_EQ(reloadedContent, "<html>Edited</html>");
 }
+
+// テスト用のダミーコアコンテキスト (I/Oテスト用)
+class MockCoreContextForIoTests : public ICoreContext {
+public:
+    void sendChatMessage(const QString&) override {}
+    void requestTts(const QString&, const QString&, int, int, int) override {}
+    void sendToObs(const QString&, const QJsonObject&) override {}
+    void postDiscordWebhook(const QString&, const QJsonObject&) override {}
+    QString getPluginDirectory() const override { return m_dir; }
+    QString getCipherKey() const override { return "TestKey1234567890"; }
+    bool writeEncryptedFile(const QString&, const QByteArray&) override { return false; }
+    QByteArray readEncryptedFile(const QString&) override { return QByteArray(); }
+
+    QString m_dir;
+};
+
+// UT_LDR_005: 暗号化ファイルI/Oテスト (ICoreContext::writeEncryptedFile / readEncryptedFile)
+TEST_F(PluginLoaderTest, UT_LDR_005_EncryptedFileIO) {
+    MockCoreContextForIoTests baseContext;
+    baseContext.m_dir = pluginAssetsDir; // テスト用のテンポラリディレクトリを使用
+
+    PluginContext context(&baseContext, "test_plugin");
+
+    // テストディレクトリの初期化
+    QDir(context.getPluginDirectory()).removeRecursively();
+
+    // 1. 新規書き込み＆読み込みテスト
+    QByteArray plainData = "Hello, this is a secure plugin data!";
+    bool writeOk = context.writeEncryptedFile("config.enc", plainData);
+    EXPECT_TRUE(writeOk);
+
+    // 物理ファイルが存在し、暗号化（平文ではない）されていることを検証
+    QString expectedPath = QDir(context.getPluginDirectory()).filePath("config.enc");
+    QFile file(expectedPath);
+    ASSERT_TRUE(file.exists());
+    ASSERT_TRUE(file.open(QIODevice::ReadOnly));
+    QByteArray fileContent = file.readAll();
+    file.close();
+    EXPECT_NE(fileContent, plainData); // 暗号化されているため平文とは一致しないはず
+
+    // 読み込み・復号の検証
+    QByteArray readData = context.readEncryptedFile("config.enc");
+    EXPECT_EQ(readData, plainData);
+
+    // 2. 存在しないファイルの読み込み検証 (空の QByteArray が返却されるはず)
+    QByteArray missingData = context.readEncryptedFile("does_not_exist.enc");
+    EXPECT_TRUE(missingData.isEmpty());
+
+    // 3. 上書き保存の検証 (W+仕様：上書き)
+    QByteArray newPlainData = "Updated data content";
+    bool overwriteOk = context.writeEncryptedFile("config.enc", newPlainData);
+    EXPECT_TRUE(overwriteOk);
+    QByteArray reReadData = context.readEncryptedFile("config.enc");
+    EXPECT_EQ(reReadData, newPlainData);
+
+    // クリーンアップ
+    QDir(context.getPluginDirectory()).removeRecursively();
+}
+
+// UT_LDR_006: ディレクトリトラバーサル防止テスト (安全性検証)
+TEST_F(PluginLoaderTest, UT_LDR_006_PathSafetyVerification) {
+    MockCoreContextForIoTests baseContext;
+    baseContext.m_dir = pluginAssetsDir;
+
+    PluginContext context(&baseContext, "test_plugin");
+
+    QByteArray testData = "Top Secret";
+
+    // 1. 親ディレクトリへのトラバーサルの禁止
+    EXPECT_FALSE(context.writeEncryptedFile("../traversal.enc", testData));
+    EXPECT_TRUE(context.readEncryptedFile("../traversal.enc").isEmpty());
+
+    // 2. 絶対パスの禁止
+#ifdef Q_OS_WIN
+    QString absolutePath = "C:/Temp/unsafe.enc";
+#else
+    QString absolutePath = "/tmp/unsafe.enc";
+#endif
+    EXPECT_FALSE(context.writeEncryptedFile(absolutePath, testData));
+    EXPECT_TRUE(context.readEncryptedFile(absolutePath).isEmpty());
+}
+

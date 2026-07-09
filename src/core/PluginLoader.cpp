@@ -5,6 +5,109 @@
 #include <QFileInfo>
 #include "logger/Logger.h"
 #include "SignalDispatcher.h"
+#include <QMutex>
+#include <QMutexLocker>
+#include <QJsonObject>
+#include "cipher_engine.h"
+
+PluginContext::PluginContext(ICoreContext* baseContext, const QString& pluginId)
+    : m_base(baseContext), m_pluginId(pluginId) {}
+
+void PluginContext::sendChatMessage(const QString& message) {
+    m_base->sendChatMessage(message);
+}
+
+void PluginContext::requestTts(const QString& text, const QString& speakerId, int speed, int pitch, int volume) {
+    m_base->requestTts(text, speakerId, speed, pitch, volume);
+}
+
+void PluginContext::sendToObs(const QString& action, const QJsonObject& payload) {
+    m_base->sendToObs(action, payload);
+}
+
+void PluginContext::postDiscordWebhook(const QString& webhookUrl, const QJsonObject& payload) {
+    m_base->postDiscordWebhook(webhookUrl, payload);
+}
+
+QString PluginContext::getPluginDirectory() const {
+    QDir dir(m_base->getPluginDirectory());
+    return dir.filePath(m_pluginId);
+}
+
+QString PluginContext::getCipherKey() const {
+    return m_base->getCipherKey();
+}
+
+bool PluginContext::writeEncryptedFile(const QString& relativePath, const QByteArray& data) {
+    if (relativePath.contains("..") || QFileInfo(relativePath).isAbsolute()) {
+        Logger::instance().log("ERROR", "PluginContext", "writeEncryptedFile",
+                               QString("Blocked unsafe file write path: %1").arg(relativePath));
+        return false;
+    }
+
+    QMutexLocker locker(&m_mutex);
+    QString absolutePath = QDir(getPluginDirectory()).filePath(relativePath);
+    
+    // Ensure parent directories exist
+    QFileInfo fileInfo(absolutePath);
+    QDir().mkpath(fileInfo.absolutePath());
+
+    // Encrypt with TransCipher
+    CipherResult result = CipherEngine::encrypt(data, getCipherKey().toUtf8(), AesMode::Mandatory);
+    if (!result.isSuccess()) {
+        Logger::instance().log("ERROR", "PluginContext", "writeEncryptedFile",
+                               QString("Encryption failed for file: %1").arg(relativePath));
+        return false;
+    }
+
+    QByteArray encryptedBase64 = result.data().toBase64();
+
+    QFile file(absolutePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        Logger::instance().log("ERROR", "PluginContext", "writeEncryptedFile",
+                               QString("Failed to open file for write: %1").arg(absolutePath));
+        return false;
+    }
+
+    file.write(encryptedBase64);
+    file.close();
+    return true;
+}
+
+QByteArray PluginContext::readEncryptedFile(const QString& relativePath) {
+    if (relativePath.contains("..") || QFileInfo(relativePath).isAbsolute()) {
+        Logger::instance().log("ERROR", "PluginContext", "readEncryptedFile",
+                               QString("Blocked unsafe file read path: %1").arg(relativePath));
+        return QByteArray();
+    }
+
+    QMutexLocker locker(&m_mutex);
+    QString absolutePath = QDir(getPluginDirectory()).filePath(relativePath);
+
+    QFile file(absolutePath);
+    if (!file.exists()) {
+        return QByteArray();
+    }
+
+    if (!file.open(QIODevice::ReadOnly)) {
+        Logger::instance().log("ERROR", "PluginContext", "readEncryptedFile",
+                               QString("Failed to open file for read: %1").arg(absolutePath));
+        return QByteArray();
+    }
+
+    QByteArray encryptedBase64 = file.readAll();
+    file.close();
+
+    QByteArray encryptedData = QByteArray::fromBase64(encryptedBase64);
+    CipherResult result = CipherEngine::decrypt(encryptedData, getCipherKey().toUtf8());
+    if (!result.isSuccess()) {
+        Logger::instance().log("ERROR", "PluginContext", "readEncryptedFile",
+                               QString("Decryption failed for file: %1").arg(relativePath));
+        return QByteArray();
+    }
+
+    return result.data();
+}
 
 PluginLoader::PluginLoader(QObject* parent) : QObject(parent) {}
 
@@ -68,8 +171,11 @@ IChannelPlugin* PluginLoader::loadPlugin(const QString& filePath, ICoreContext* 
     // デフォルトアセットの自動展開
     extractDefaultAssets(plugin);
     
+    // PluginContext の生成 (プラグインごとに独立した暗号化/復号コンテキストを提供)
+    PluginContext* pluginContext = new PluginContext(context, plugin->pluginId());
+    
     // 初期化
-    plugin->initialize(context);
+    plugin->initialize(pluginContext);
     
     // GUIウィジェットの生成
     QWidget* widget = plugin->createWidget(uiParent);
@@ -95,6 +201,7 @@ IChannelPlugin* PluginLoader::loadPlugin(const QString& filePath, ICoreContext* 
     lp.loader = loader;
     lp.instance = plugin;
     lp.widget = widget;
+    lp.context = pluginContext;
     lp.connections = connections;
     
     m_loadedPlugins[filePath] = lp;
@@ -137,6 +244,9 @@ bool PluginLoader::unloadPlugin(const QString& filePath) {
                                QString("Failed to unload plugin %1: %2").arg(filePath).arg(lp.loader->errorString()));
     }
     
+    if (lp.context) {
+        delete lp.context;
+    }
     delete lp.loader;
     m_loadedPlugins.remove(filePath);
     return ok;

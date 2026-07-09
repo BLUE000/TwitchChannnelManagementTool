@@ -5,6 +5,8 @@
 #include <QList>
 #include <QString>
 #include <QWidget>
+#include <QMutex>
+#include <QJsonObject>
 #include "shared/plugin_interface.h"
 
 struct LoadedPlugin {
@@ -12,7 +14,29 @@ struct LoadedPlugin {
     QPluginLoader* loader;
     IChannelPlugin* instance;
     QWidget* widget;
+    ICoreContext* context;
     QList<QMetaObject::Connection> connections;
+};
+
+class PluginContext : public ICoreContext {
+public:
+    PluginContext(ICoreContext* baseContext, const QString& pluginId);
+    ~PluginContext() override = default;
+
+    void sendChatMessage(const QString& message) override;
+    void requestTts(const QString& text, const QString& speakerId, int speed, int pitch, int volume) override;
+    void sendToObs(const QString& action, const QJsonObject& payload) override;
+    void postDiscordWebhook(const QString& webhookUrl, const QJsonObject& payload) override;
+    QString getPluginDirectory() const override;
+    QString getCipherKey() const override;
+
+    bool writeEncryptedFile(const QString& relativePath, const QByteArray& data) override;
+    QByteArray readEncryptedFile(const QString& relativePath) override;
+
+private:
+    ICoreContext* m_base;
+    QString m_pluginId;
+    mutable QMutex m_mutex;
 };
 
 class PluginLoader : public QObject {

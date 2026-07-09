@@ -206,3 +206,14 @@ void AppController::performDiscordWebhook(const QString& url, const QJsonObject&
         reply->deleteLater();
     });
 }
+
+bool AppController::writeEncryptedFile(const QString& relativePath, const QByteArray& data) {
+    Q_UNUSED(relativePath);
+    Q_UNUSED(data);
+    return false;
+}
+
+QByteArray AppController::readEncryptedFile(const QString& relativePath) {
+    Q_UNUSED(relativePath);
+    return QByteArray();
+}

@@ -45,6 +45,8 @@ public:
     void postDiscordWebhook(const QString& webhookUrl, const QJsonObject& payload) override;
     QString getPluginDirectory() const override;
     QString getCipherKey() const override;
+    bool writeEncryptedFile(const QString& relativePath, const QByteArray& data) override;
+    QByteArray readEncryptedFile(const QString& relativePath) override;
 
     // モジュールへのゲッター
     PluginLoader* pluginLoader() const { return m_pluginLoader; }
