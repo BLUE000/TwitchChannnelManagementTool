@@ -390,8 +390,14 @@ void SettingsTab::refreshPluginList() {
                 item.iconPng = plugin->iconPngData();
                 item.enabled = false;
                 m_pluginItems.append(item);
+            } else {
+                Logger::instance().log("ERROR", "SettingsTab", "refreshPluginList",
+                                       QString("Cast failed for %1: Not implementing IChannelPlugin").arg(filePath));
             }
             loader.unload();
+        } else {
+            Logger::instance().log("ERROR", "SettingsTab", "refreshPluginList",
+                                   QString("Failed to load DLL %1: %2").arg(filePath).arg(loader.errorString()));
         }
     }
 }
