@@ -6,6 +6,8 @@
 #include "TrustChainQt.hpp"
 
 int main(int argc, char *argv[]) {
+    QApplication app(argc, argv);
+
     // 1. TrustChain 署名・認証トークンの検証
     TrustChain::Core trustChainCore;
     TrustChain::AuthStatus authStatus = trustChainCore.verifyToken();
@@ -15,8 +17,6 @@ int main(int argc, char *argv[]) {
         TrustChain::Core::terminateApplication("TwitchChannelManagementTool: Invalid or revoked license token.");
         return -1;
     }
-
-    QApplication app(argc, argv);
     
     // 2. コアコントローラの初期化
     AppController controller;
