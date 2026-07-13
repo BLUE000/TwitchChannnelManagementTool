@@ -10,7 +10,7 @@ ObsHttpWebSocketServer::ObsHttpWebSocketServer()
     : m_workerThread(nullptr)
     , m_tcpServer(nullptr)
     , m_webSocketServer(nullptr)
-    , m_port(8081)
+    , m_port(58081)
 {
 }
 

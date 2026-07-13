@@ -257,8 +257,8 @@ assets/
 
 ### 6.3. HTTP配信仕様
 * **接続ポートおよび配信URL**:
-  - デフォルトアセット: `http://[ホスト名]:8081/overlay/[プラグイン名]/default/index.html`
-  - カスタムアセット: `http://[ホスト名]:8081/overlay/[プラグイン名]/custom/index.html`
+  - デフォルトアセット: `http://[ホスト名]:58081/overlay/[プラグイン名]/default/index.html`
+  - カスタムアセット: `http://[ホスト名]:58081/overlay/[プラグイン名]/custom/index.html`
 * **LAN内マルチPC接続仕様**:
   - 同一LAN内の別PCに配置されたOBSからの接続を受け入れるため、本体HTTPサーバーは `QHostAddress::Any`（`0.0.0.0`）にバインドしてすべてのネットワークインターフェースからのリクエストをリッスンします。
   - クロスドメインエラーを防止するため、HTTP応答には `Access-Control-Allow-Origin: *` などのCORS許可ヘッダーを付与します。

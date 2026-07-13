@@ -90,7 +90,7 @@ void SettingsTab::setupUiManual() {
     QFormLayout* obsForm = new QFormLayout(obsGroup);
     m_obsPortSpin = new QSpinBox(obsGroup);
     m_obsPortSpin->setRange(1024, 65535);
-    m_obsPortSpin->setValue(8081);
+    m_obsPortSpin->setValue(58081);
 
     QHBoxLayout* obsCopyLayout = new QHBoxLayout();
     m_obsUrlCombo = new QComboBox(obsGroup);
@@ -258,7 +258,7 @@ void SettingsTab::loadSettings() {
     // UIへの展開
     m_twitchChannelEdit->setText(settingsObj.value("twitch_channel").toString(""));
     m_twitchTokenEdit->setText(settingsObj.value("twitch_token").toString(""));
-    m_obsPortSpin->setValue(settingsObj.value("obs_port").toInt(8081));
+    m_obsPortSpin->setValue(settingsObj.value("obs_port").toInt(58081));
     
     int ttsEngine = settingsObj.value("tts_engine").toInt(0);
     if (ttsEngine == 1) {

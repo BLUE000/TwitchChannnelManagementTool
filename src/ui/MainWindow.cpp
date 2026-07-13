@@ -292,7 +292,7 @@ void MainWindow::onSettingsSaved() {
     QString appDir = QCoreApplication::applicationDirPath();
     QString settingsPath = QDir(appDir).filePath("settings.bin");
     
-    int obsPort = 8081;
+    int obsPort = 58081;
     QFile file(settingsPath);
     if (file.open(QIODevice::ReadOnly)) {
         QByteArray encryptedData = file.readAll();
@@ -320,7 +320,7 @@ void MainWindow::onSettingsSaved() {
         QJsonDocument doc = QJsonDocument::fromJson(rawJson);
         if (!doc.isNull() && doc.isObject()) {
             QJsonObject obj = doc.object();
-            obsPort = obj.value("obs_port").toInt(8081);
+            obsPort = obj.value("obs_port").toInt(58081);
             
             // TTS設定の更新
             int ttsEngine = obj.value("tts_engine").toInt(0);
@@ -476,7 +476,7 @@ void MainWindow::restoreWindowState() {
     }
 
     // OBSサーバー初期稼働
-    int obsPort = settingsObj.value("obs_port").toInt(8081);
+    int obsPort = settingsObj.value("obs_port").toInt(58081);
     m_controller->startAllServices(obsPort);
     m_statusObs->setText(QString("🟢 OBS Server: ポート %1").arg(obsPort));
 

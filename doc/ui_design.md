@@ -40,7 +40,7 @@
 ### 2.3. 最下部ステータスバー (Status Bar)
 * 接続状態や動作状況を視覚的に常時モニタリングできるインジケータを配置します。
   * **Twitch接続ステータス**: `🔴 Twitch: 未接続` または `🟢 Twitch: 接続中 (アカウント名)`
-  * **OBSサーバーステータス**: `🔴 OBS Server: 停止` または `🟢 OBS Server: ポート 8081`
+  * **OBSサーバーステータス**: `🔴 OBS Server: 停止` または `🟢 OBS Server: ポート 58081`
   * **TTS連携ステータス**: `🔴 TTS: 停止` または `🟢 TTS: 棒読みちゃん (8080)` / `🟢 TTS: VOICEVOX (50021)`
 
 ---
@@ -55,11 +55,11 @@
 * **接続テストボタン**: `QPushButton`
 
 ### 3.2. OBS 連携設定 (GroupBox)
-* **HTTP/WebSocketサーバーポート**: `QSpinBox` (範囲: `1024` 〜 `65535` , デフォルト: `8081`)
+* **HTTP/WebSocketサーバーポート**: `QSpinBox` (範囲: `1024` 〜 `65535` , デフォルト: `58081`)
 * **ブラウザソース用コピーURL**:
   - `QComboBox` または `QListWidget` 形式で、コピー可能なURL候補を表示。
-    1. ローカル接続用: `http://localhost:8081/`
-    2. LAN内接続用: `http://[本機のLAN用IPアドレス]:8081/` （`QNetworkInterface::allAddresses()` より動的取得した非ループバックIPv4アドレスをリスティング）
+    1. ローカル接続用: `http://localhost:58081/`
+    2. LAN内接続用: `http://[本機のLAN用IPアドレス]:58081/` （`QNetworkInterface::allAddresses()` より動的取得した非ループバックIPv4アドレスをリスティング）
 * **クリップボードコピーボタン**: `QPushButton` (選択されたURLをクリップボードにコピー)
 
 
