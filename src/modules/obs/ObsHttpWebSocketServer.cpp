@@ -15,21 +15,6 @@ ObsHttpWebSocketServer::ObsHttpWebSocketServer()
 }
 
 ObsHttpWebSocketServer::~ObsHttpWebSocketServer() {
-    stopServerThread();
-}
-
-void ObsHttpWebSocketServer::startServerThread(quint16 port) {
-    if (!m_workerThread) {
-        m_workerThread = new QThread();
-        this->moveToThread(m_workerThread);
-        connect(m_workerThread, &QThread::started, this, [this, port]() {
-            this->startServer(port);
-        });
-        m_workerThread->start();
-    }
-}
-
-void ObsHttpWebSocketServer::stopServerThread() {
     if (m_workerThread) {
         QMetaObject::invokeMethod(this, "stopServer", Qt::BlockingQueuedConnection);
         m_workerThread->quit();
@@ -39,7 +24,24 @@ void ObsHttpWebSocketServer::stopServerThread() {
     }
 }
 
+void ObsHttpWebSocketServer::startServerThread(quint16 port) {
+    if (!m_workerThread) {
+        m_workerThread = new QThread();
+        this->moveToThread(m_workerThread);
+        m_workerThread->start();
+    }
+    QMetaObject::invokeMethod(this, "startServer", Qt::QueuedConnection, Q_ARG(quint16, port));
+}
+
+void ObsHttpWebSocketServer::stopServerThread() {
+    if (m_workerThread) {
+        QMetaObject::invokeMethod(this, "stopServer", Qt::BlockingQueuedConnection);
+    }
+}
+
 void ObsHttpWebSocketServer::startServer(quint16 port) {
+    stopServer(); // 以前のインスタンスを確実に終了・破棄
+    
     m_port = port;
     
     m_tcpServer = new QTcpServer(this);

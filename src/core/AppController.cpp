@@ -97,7 +97,7 @@ void AppController::stopAllServices() {
     }
     
     if (m_twitchCollector) {
-        m_twitchCollector->disconnectFromTwitch();
+        QMetaObject::invokeMethod(m_twitchCollector, "disconnectFromTwitch", Qt::QueuedConnection);
     }
 }
 
@@ -153,7 +153,7 @@ void AppController::customEvent(QEvent* event) {
         switch (pEvent->type()) {
             case PluginNotifyEvent::TypeSendChat: {
                 QString msg = payload.value("message").toString();
-                m_twitchCollector->postChatMessage(msg);
+                QMetaObject::invokeMethod(m_twitchCollector, "postChatMessage", Qt::QueuedConnection, Q_ARG(QString, msg));
                 break;
             }
             case PluginNotifyEvent::TypeTtsSpeak: {

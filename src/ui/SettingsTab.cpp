@@ -420,7 +420,7 @@ void SettingsTab::onTestConnectionClicked() {
     m_twitchStatusLabel->setText("🟡 接続試行中...");
     
     // 一時的に再接続を実行
-    m_controller->twitchCollector()->disconnectFromTwitch();
+    QMetaObject::invokeMethod(m_controller->twitchCollector(), "disconnectFromTwitch", Qt::QueuedConnection);
     
     // トークン自動取得完了時のバインド
     disconnect(m_controller->twitchCollector(), &TwitchEventCollector::tokenRetrieved, nullptr, nullptr);
@@ -438,7 +438,7 @@ void SettingsTab::onTestConnectionClicked() {
         }
     });
 
-    m_controller->twitchCollector()->connectToTwitch(channel, token);
+    QMetaObject::invokeMethod(m_controller->twitchCollector(), "connectToTwitch", Qt::QueuedConnection, Q_ARG(QString, channel), Q_ARG(QString, token));
 }
 
 void SettingsTab::onCopyUrlClicked() {

@@ -41,12 +41,14 @@ void TwitchEventCollector::startCollectorThread() {
 }
 
 void TwitchEventCollector::stopCollectorThread() {
-    disconnectFromTwitch();
     if (m_workerThread) {
+        QMetaObject::invokeMethod(this, "disconnectFromTwitch", Qt::BlockingQueuedConnection);
         m_workerThread->quit();
         m_workerThread->wait();
         delete m_workerThread;
         m_workerThread = nullptr;
+    } else {
+        disconnectFromTwitch();
     }
 }
 
