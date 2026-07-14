@@ -238,15 +238,10 @@ bool PluginLoader::unloadPlugin(const QString& filePath) {
         lp.instance->shutdown();
     }
     
-    // 4. DLLのアンロード
-    bool ok = lp.loader->unload();
-    if (ok) {
-        Logger::instance().log("INFO", "PluginLoader", "unloadPlugin", 
-                               QString("Plugin unloaded successfully: %1").arg(filePath));
-    } else {
-        Logger::instance().log("ERROR", "PluginLoader", "unloadPlugin", 
-                               QString("Failed to unload plugin %1: %2").arg(filePath).arg(lp.loader->errorString()));
-    }
+    // 4. DLLのアンロード (QPluginLoader::unload()は、内部でQSqlDatabaseなどの静的オブジェクトが使用されている場合にデッドロック/クラッシュを引き起こすため、プロセスの終了までメモリ上に維持します)
+    bool ok = true;
+    Logger::instance().log("INFO", "PluginLoader", "unloadPlugin", 
+                           QString("Plugin metadata cleared, keeping DLL in memory to prevent static cleanup crash: %1").arg(filePath));
     
     if (lp.context) {
         delete lp.context;
