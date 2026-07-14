@@ -159,6 +159,7 @@ void TwitchEventCollector::onNewAuthConnection() {
     QTcpSocket* socket = m_authServer->nextPendingConnection();
     if (socket) {
         connect(socket, &QTcpSocket::readyRead, this, &TwitchEventCollector::onAuthReadyRead);
+        connect(socket, &QTcpSocket::disconnected, socket, &QTcpSocket::deleteLater);
     }
 }
 

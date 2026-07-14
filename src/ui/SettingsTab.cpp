@@ -44,6 +44,10 @@ SettingsTab::SettingsTab(AppController* controller, QWidget* parent)
     connect(m_ttsVoiceVoxRadio, &QRadioButton::toggled, this, &SettingsTab::onTtsEngineToggled);
     
     connect(m_obsPortSpin, &QSpinBox::valueChanged, this, &SettingsTab::populateObsUrls);
+    
+    // Twitch イベントコレクターのシグナルバインド (一括バインドして重複接続を防ぐ)
+    connect(m_controller->twitchCollector(), &TwitchEventCollector::tokenRetrieved, this, &SettingsTab::onTwitchTokenRetrieved);
+    connect(m_controller->twitchCollector(), &TwitchEventCollector::connectionStatusChanged, this, &SettingsTab::onTwitchConnectionStatusChanged);
 
     loadSettings();
 }
@@ -421,23 +425,6 @@ void SettingsTab::onTestConnectionClicked() {
     
     // 一時的に再接続を実行
     QMetaObject::invokeMethod(m_controller->twitchCollector(), "disconnectFromTwitch", Qt::QueuedConnection);
-    
-    // トークン自動取得完了時のバインド
-    disconnect(m_controller->twitchCollector(), &TwitchEventCollector::tokenRetrieved, nullptr, nullptr);
-    connect(m_controller->twitchCollector(), &TwitchEventCollector::tokenRetrieved, this, [this](const QString& retrievedToken) {
-        m_twitchTokenEdit->setText(retrievedToken);
-        saveSettings();
-    });
-    
-    disconnect(m_controller->twitchCollector(), &TwitchEventCollector::connectionStatusChanged, nullptr, nullptr);
-    connect(m_controller->twitchCollector(), &TwitchEventCollector::connectionStatusChanged, this, [this](bool connected, const QString& accountName) {
-        if (connected) {
-            m_twitchStatusLabel->setText(QString("🟢 接続完了 (%1)").arg(accountName));
-        } else {
-            m_twitchStatusLabel->setText("🔴 未接続");
-        }
-    });
-
     QMetaObject::invokeMethod(m_controller->twitchCollector(), "connectToTwitch", Qt::QueuedConnection, Q_ARG(QString, channel), Q_ARG(QString, token));
 }
 
@@ -491,5 +478,18 @@ void SettingsTab::onTtsEngineToggled() {
         m_ttsPortSpin->setValue(50001);
     } else {
         m_ttsPortSpin->setValue(50021);
+    }
+}
+
+void SettingsTab::onTwitchTokenRetrieved(const QString& retrievedToken) {
+    m_twitchTokenEdit->setText(retrievedToken);
+    saveSettings();
+}
+
+void SettingsTab::onTwitchConnectionStatusChanged(bool connected, const QString& accountName) {
+    if (connected) {
+        m_twitchStatusLabel->setText(QString("🟢 接続完了 (%1)").arg(accountName));
+    } else {
+        m_twitchStatusLabel->setText("🔴 未接続");
     }
 }

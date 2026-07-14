@@ -45,6 +45,8 @@ private slots:
     void onMoveDownClicked();
     void onPluginSelectionChanged();
     void onTtsEngineToggled();
+    void onTwitchTokenRetrieved(const QString& retrievedToken);
+    void onTwitchConnectionStatusChanged(bool connected, const QString& accountName);
 
 private:
     void setupUiManual();
