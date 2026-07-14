@@ -7,13 +7,14 @@
 #include <QWidget>
 #include <QMutex>
 #include <QJsonObject>
+#include <QPointer>
 #include "shared/plugin_interface.h"
 
 struct LoadedPlugin {
     QString filePath;
     QPluginLoader* loader;
     IChannelPlugin* instance;
-    QWidget* widget;
+    QPointer<QWidget> widget;
     ICoreContext* context;
     QList<QMetaObject::Connection> connections;
 };
