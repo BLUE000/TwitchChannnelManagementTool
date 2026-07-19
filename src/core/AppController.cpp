@@ -168,7 +168,8 @@ void AppController::customEvent(QEvent* event) {
             case PluginNotifyEvent::TypeObsBroadcast: {
                 QString action = payload.value("action").toString();
                 QJsonObject data = payload.value("data").toObject();
-                m_obsServer->broadcastToObs(action, data);
+                QMetaObject::invokeMethod(m_obsServer, "broadcastToObs", Qt::QueuedConnection,
+                                          Q_ARG(QString, action), Q_ARG(QJsonObject, data));
                 break;
             }
             case PluginNotifyEvent::TypeDiscordWebhook: {
