@@ -1,4 +1,5 @@
 #include "TwitchEventCollector.h"
+#include <algorithm>
 #include <QCoreApplication>
 #include <QDir>
 #include <QDesktopServices>
@@ -288,6 +289,59 @@ void TwitchEventCollector::onIrcReadyRead() {
     }
 }
 
+static QString replaceEmotesWithHtml(const QString& text, const QString& emotesTag) {
+    if (emotesTag.isEmpty()) return text.toHtmlEscaped();
+    
+    struct EmoteReplacement {
+        int start;
+        int end;
+        QString emoteId;
+    };
+    QList<EmoteReplacement> replacements;
+    QStringList emoteSpecs = emotesTag.split('/');
+    for (const QString& spec : emoteSpecs) {
+        QStringList parts = spec.split(':');
+        if (parts.size() < 2) continue;
+        QString emoteId = parts[0];
+        QStringList ranges = parts[1].split(',');
+        for (const QString& range : ranges) {
+            QStringList bounds = range.split('-');
+            if (bounds.size() == 2) {
+                EmoteReplacement rep;
+                rep.start = bounds[0].toInt();
+                rep.end = bounds[1].toInt();
+                rep.emoteId = emoteId;
+                if (rep.start >= 0 && rep.end >= rep.start && rep.end < text.length()) {
+                    replacements.append(rep);
+                }
+            }
+        }
+    }
+    
+    std::sort(replacements.begin(), replacements.end(), [](const EmoteReplacement& a, const EmoteReplacement& b) {
+        return a.start < b.start;
+    });
+    
+    QString result;
+    int lastIdx = 0;
+    for (const auto& rep : replacements) {
+        if (rep.start < lastIdx) continue;
+        if (rep.start > lastIdx) {
+            result += text.mid(lastIdx, rep.start - lastIdx).toHtmlEscaped();
+        }
+        int len = rep.end - rep.start + 1;
+        QString emoteText = text.mid(rep.start, len);
+        QString imgHtml = QString("<img src=\"https://static-cdn.jtvnw.net/emoticons/v2/%1/default/dark/1.0\" alt=\"%2\" title=\"%2\" width=\"28\" height=\"28\" style=\"vertical-align: middle;\" />")
+            .arg(rep.emoteId, emoteText.toHtmlEscaped());
+        result += imgHtml;
+        lastIdx = rep.end + 1;
+    }
+    if (lastIdx < text.length()) {
+        result += text.mid(lastIdx).toHtmlEscaped();
+    }
+    return result;
+}
+
 void TwitchEventCollector::parseIrcMessage(const QString& rawMessage) {
     // 例: @badge-info=;badges=moderator/1;color=#1E90FF;display-name=Tester;emotes=;first-msg=0;mod=1;room-id=12345;subscriber=0;tmi-sent-ts=1625621400;turbo=0;user-id=98765;user-type=mod :tester!tester@tester.tmi.twitch.tv PRIVMSG #streamer :hello world
     if (rawMessage.contains("PRIVMSG")) {
@@ -306,6 +360,7 @@ void TwitchEventCollector::parseIrcMessage(const QString& rawMessage) {
         QString displayName = "Anonymous";
         QString userId = "";
         QString username = "";
+        QString emotesVal = "";
         QJsonArray badgesArray;
         
         // メッセージ送信者のニックネーム抽出
@@ -328,6 +383,8 @@ void TwitchEventCollector::parseIrcMessage(const QString& rawMessage) {
                         displayName = val.isEmpty() ? username : val;
                     } else if (key == "user-id") {
                         userId = val;
+                    } else if (key == "emotes") {
+                        emotesVal = val;
                     } else if (key == "badges") {
                         // バッジ情報の簡易抽出
                         QStringList badgeList = val.split(',');
@@ -346,7 +403,7 @@ void TwitchEventCollector::parseIrcMessage(const QString& rawMessage) {
         comment.userId = userId;
         comment.username = username;
         comment.displayName = displayName;
-        comment.comment = commentText;
+        comment.comment = replaceEmotesWithHtml(commentText, emotesVal);
         comment.badges = badgesArray;
         comment.timestamp = QDateTime::currentMSecsSinceEpoch();
         
