@@ -363,12 +363,23 @@ void TwitchEventCollector::parseIrcMessage(const QString& rawMessage) {
         QString emotesVal = "";
         QJsonArray badgesArray;
         
-        // メッセージ送信者のニックネーム抽出
-        int nickStart = header.indexOf(':');
-        int nickEnd = header.indexOf('!');
-        if (nickStart != -1 && nickEnd != -1 && nickEnd > nickStart) {
-            username = header.mid(nickStart + 1, nickEnd - nickStart - 1);
-            displayName = username; // フォールバック
+        // メッセージ送信者のニックネーム抽出（スタンプタグ等の値に含まれるコロンを避けるための抽出設計）
+        int nickStart = -1;
+        if (header.startsWith('@')) {
+            int prefixStart = header.indexOf(" :");
+            if (prefixStart != -1) {
+                nickStart = prefixStart + 2; // " :"の次（ニックネームの開始位置）
+            }
+        } else if (header.startsWith(':')) {
+            nickStart = 1; // 先頭のコロンの次
+        }
+        
+        if (nickStart != -1) {
+            int nickEnd = header.indexOf('!', nickStart);
+            if (nickEnd != -1 && nickEnd > nickStart) {
+                username = header.mid(nickStart, nickEnd - nickStart);
+                displayName = username; // フォールバック
+            }
         }
         
         if (header.startsWith('@')) {
