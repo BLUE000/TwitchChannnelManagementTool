@@ -148,6 +148,10 @@ void ObsHttpWebSocketServer::handleHttpRequest(QTcpSocket* socket, const QByteAr
         return;
     }
     
+    if (path.startsWith("/assets/overlay/")) {
+        path = path.mid(7); // "/assets" を除去して "/overlay/..." に変換
+    }
+    
     if (path.startsWith("/overlay/")) {
         QString appDir = QCoreApplication::applicationDirPath();
         // "/overlay/..." のパスを "assets/overlay/..." にマップする
