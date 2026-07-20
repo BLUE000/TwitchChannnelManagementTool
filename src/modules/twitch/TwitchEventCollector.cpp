@@ -6,6 +6,10 @@
 #include <QUrlQuery>
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QEventLoop>
 #include "logger/Logger.h"
 #include "core/twitch_credentials.h"
 
@@ -500,4 +504,87 @@ void TwitchEventCollector::onTestTimerTick() {
         
         emit rewardRedeemed(redemption);
     }
+}
+
+QList<TwitchRewardInfo> TwitchEventCollector::getChannelPointRewards() {
+    Logger::instance().log("INFO", "TwitchEventCollector", "getChannelPointRewards", "Fetching channel point rewards from Twitch Helix API...");
+
+    if (m_oauthToken.isEmpty()) {
+        Logger::instance().log("WARNING", "TwitchEventCollector", "getChannelPointRewards", "OAuth token is empty. Returning mock/fallback list.");
+        TwitchRewardInfo mock1{"reward-sound-alert", "音声を鳴らす", 100, true};
+        TwitchRewardInfo mock2{"reward-highlight", "コメント強調", 50, true};
+        return {mock1, mock2};
+    }
+
+    QNetworkAccessManager nam;
+    QEventLoop loop;
+    QTimer timer;
+    timer.setSingleShot(true);
+    connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    // 1. Broadcaster ID の取得 (Users API)
+    QString broadcasterId = "";
+    QUrl userUrl("https://api.twitch.tv/helix/users");
+    if (!m_channelName.isEmpty()) {
+        QUrlQuery query;
+        query.addQueryItem("login", m_channelName);
+        userUrl.setQuery(query);
+    }
+
+    QNetworkRequest userReq(userUrl);
+    userReq.setRawHeader("Authorization", QString("Bearer %1").arg(m_oauthToken).toUtf8());
+    userReq.setRawHeader("Client-Id", TWITCH_CLIENT_ID.toUtf8());
+
+    QNetworkReply* userReply = nam.get(userReq);
+    connect(userReply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    timer.start(5000); // 5秒タイムアウト
+    loop.exec();
+
+    if (userReply->error() == QNetworkReply::NoError) {
+        QJsonDocument doc = QJsonDocument::fromJson(userReply->readAll());
+        QJsonObject obj = doc.object();
+        QJsonArray data = obj.value("data").toArray();
+        if (!data.isEmpty()) {
+            broadcasterId = data.at(0).toObject().value("id").toString();
+        }
+    }
+    userReply->deleteLater();
+
+    if (broadcasterId.isEmpty()) {
+        Logger::instance().log("ERROR", "TwitchEventCollector", "getChannelPointRewards", "Failed to retrieve broadcaster ID");
+        return {};
+    }
+
+    // 2. チャンネルポイント報酬一覧の取得 (custom_rewards API)
+    QUrl rewardUrl(QString("https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id=%1").arg(broadcasterId));
+    QNetworkRequest rewardReq(rewardUrl);
+    rewardReq.setRawHeader("Authorization", QString("Bearer %1").arg(m_oauthToken).toUtf8());
+    rewardReq.setRawHeader("Client-Id", TWITCH_CLIENT_ID.toUtf8());
+
+    QNetworkReply* rewardReply = nam.get(rewardReq);
+    connect(rewardReply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    timer.start(5000); // 5秒タイムアウト
+    loop.exec();
+
+    QList<TwitchRewardInfo> rewardsList;
+    if (rewardReply->error() == QNetworkReply::NoError) {
+        QJsonDocument doc = QJsonDocument::fromJson(rewardReply->readAll());
+        QJsonObject obj = doc.object();
+        QJsonArray data = obj.value("data").toArray();
+        for (const QJsonValue& val : data) {
+            QJsonObject item = val.toObject();
+            TwitchRewardInfo info;
+            info.id = item.value("id").toString();
+            info.title = item.value("title").toString();
+            info.cost = item.value("cost").toInt();
+            info.isEnabled = item.value("is_enabled").toBool();
+            rewardsList.append(info);
+        }
+        Logger::instance().log("INFO", "TwitchEventCollector", "getChannelPointRewards", QString("Successfully retrieved %1 rewards").arg(rewardsList.size()));
+    } else {
+        Logger::instance().log("ERROR", "TwitchEventCollector", "getChannelPointRewards", QString("Failed to fetch custom rewards: %1").arg(rewardReply->errorString()));
+    }
+    rewardReply->deleteLater();
+
+    return rewardsList;
 }

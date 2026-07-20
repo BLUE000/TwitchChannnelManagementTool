@@ -30,6 +30,13 @@ struct TwitchRewardRedemption {
     qint64 timestamp;
 };
 
+struct TwitchRewardInfo {
+    QString id;          // 報酬ID
+    QString title;       // 報酬名
+    int cost;            // 消費ポイント数
+    bool isEnabled;      // 有効状態
+};
+
 // --- コアコンテキスト（プラグインからコアへのAPI） ---
 class ICoreContext {
 public:
@@ -41,6 +48,9 @@ public:
     virtual void sendToObs(const QString& action, const QJsonObject& payload) = 0;
     virtual void postDiscordWebhook(const QString& webhookUrl, const QJsonObject& payload) = 0; // Discord Webhook送信代行
     
+    // Twitch チャンネルポイント報酬一覧取得 (同期)
+    virtual QList<TwitchRewardInfo> getChannelPointRewards() = 0;
+
     // パス・セキュリティキー取得
     virtual QString getPluginDirectory() const = 0;
     virtual QString getCipherKey() const = 0;
@@ -81,3 +91,4 @@ public:
 
 #define IChannelPlugin_iid "com.blue000.twitchchannelmanagementtool.IChannelPlugin"
 Q_DECLARE_INTERFACE(IChannelPlugin, IChannelPlugin_iid)
+Q_DECLARE_METATYPE(TwitchRewardInfo)

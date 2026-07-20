@@ -74,12 +74,16 @@ Twitch API（Helix）へのリクエストおよび EventSub WebSocket との常
   * `void connectToTwitch(const QString& channelName, const QString& oauthToken);`
   * `void disconnectFromTwitch();`
   * `void postChatMessage(const QString& message);`
+  * `QList<TwitchRewardInfo> getChannelPointRewards();` (Twitch Helix REST API経由でカスタム報酬一覧を取得)
+* **IRCメッセージパースおよびエモート処理**:
+  - **送信者名抽出**: ヘッダーの `@` タグ値（`emotes` 等）に含まれるコロン（`:`）での誤切断を防ぐため、タグ終了マーカー `" :"` を判定基準にしてユーザー名を安全に抽出。
+  - **エモート（スタンプ）HTML変換**: `emotes` タグのインデックス範囲をパースし、コメント本文内のスタンプコードを Twitch CDN の `<img>` タグ (`https://static-cdn.jtvnw.net/emoticons/v2/<id>/default/dark/1.0`) へ置換（地の文はHTMLエスケープ）。
 * **OAuth認証用リダイレクトおよび臨時リスナー制御**:
   - `http://localhost:58080/` (ポート番号は `src/core/twitch_credentials.h` の `TWITCH_REDIRECT_PORT` 定数を使用)
   - **臨時HTTPサーバー制御**: 接続開始時、本体コアは臨時で `QTcpServer` を起動し、ポート `58080` をリスンします。
   - **URLフラグメント（ハッシュ）処理フロー**: TwitchはImplicit Grantにより `#access_token=...` を返しますが、これはHTTPリクエストでサーバーに届きません。そのため、臨時サーバーは最初の `GET /` に対し、以下のJavaScriptリダイレクトを含むシンプルなレスポンスを応答します。
     `<html><script>window.location.href = "/token?" + window.location.hash.substring(1);</script></html>`
-  - **トークン取得とクリーンアップ**: 再リクエストされた `GET /token?access_token=...` からクエリパラメータを取り出し、`oauthToken` を抽出・保存した上で「認証成功」のHTMLを応答し、臨時サーバーを即座にクローズ（停止）します。
+  - **トークン取得とクリーンアップ**: 再リクエストされた `GET /token?access_token=...` からクエリパラメータを取り出し、`oauthToken` を抽出・保存した上で「認証成功」のHTMLを応答し、臨時サーバーを即座にクローズ（停止）します。切断時には通信ソケットの `deleteLater` を実行しリソース漏れを防止します。
 
 
 
@@ -152,6 +156,14 @@ struct TwitchRewardRedemption {
     QString userInput;    // リスナー入力テキスト (ある場合)
     qint64 timestamp;     // 受信エポックミリ秒
 };
+
+// チャンネルポイントカスタム報酬情報構造体 (REST API返却用)
+struct TwitchRewardInfo {
+    QString id;           // 報酬ID
+    QString title;        // 報酬名
+    int cost;             // 消費ポイント数
+    bool isEnabled;       // 有効状態
+};
 ```
 
 ---
@@ -213,6 +225,26 @@ private:
 3. **応答の処理**:
    - 送信は非同期で行われるため、UIスレッドをブロックしません。
    - `QNetworkReply` の `finished` シグナルを接続し、応答ステータスを確認します。送信エラー（ネットワーク切断等）が発生した場合は、`Logger` モジュールを介してエラーログをファイル出力します。
+
+---
+
+### 3.5. Twitch チャンネルポイント報酬一覧取得 (`getChannelPointRewards`) の処理仕様
+プラグインからチャンネルに登録されているすべてのカスタム報酬リストを一括取得するためのAPI仕様です。
+
+1. **インターフェース呼び出し**:
+   - プラグインが `ICoreContext::getChannelPointRewards()` を呼び出します。
+2. **スレッド間安全転送**:
+   - `AppController` はメインスレッドから `m_twitchCollector`（ワーカースレッド）の `getChannelPointRewards()` スロットを呼び出します。
+   - スレッド境界を越えるため、`QMetaObject::invokeMethod(..., Qt::BlockingQueuedConnection, Q_RETURN_ARG(...))` を使用して同期的に呼び出し、結果を受領します。
+3. **Twitch Helix REST API 通信フロー**:
+   - ワーカースレッド上で `TwitchEventCollector::getChannelPointRewards()` が実行されます。
+   - トークンが空の場合はフォールバック/モックリストを即座に返却します。
+   - **ステップ 1 (ユーザーID取得)**: `GET https://api.twitch.tv/helix/users?login={m_channelName}` を発行し、チャンネルの `broadcaster_id`（数値ID）を取得します。
+   - **ステップ 2 (カスタム報酬取得)**: `GET https://api.twitch.tv/helix/channel_points/custom_rewards?broadcaster_id={broadcaster_id}` を発行します。
+   - 双方の通信にはヘッダーに `Authorization: Bearer {oauth_token}` および `Client-Id: {TWITCH_CLIENT_ID}` を付与します。
+   - 通信待ちには `QEventLoop` と5秒のタイムアウト用 `QTimer` を用い、UIをフリーズさせずにワーカースレッド上で安全に受信します。
+4. **構造体マッピングと返却**:
+   - JSONレスポンスの `data` 配列から各報酬オブジェクトを取り出し、`TwitchRewardInfo` 構造体（`id`, `title`, `cost`, `isEnabled`）のリスト `QList<TwitchRewardInfo>` へマッピングして返却します。
 
 ---
 

@@ -131,6 +131,15 @@ void AppController::postDiscordWebhook(const QString& webhookUrl, const QJsonObj
     QCoreApplication::postEvent(this, new PluginNotifyEvent(PluginNotifyEvent::TypeDiscordWebhook, eventPayload));
 }
 
+QList<TwitchRewardInfo> AppController::getChannelPointRewards() {
+    if (!m_twitchCollector) return {};
+    QList<TwitchRewardInfo> rewards;
+    QMetaObject::invokeMethod(m_twitchCollector, "getChannelPointRewards",
+                              Qt::BlockingQueuedConnection,
+                              Q_RETURN_ARG(QList<TwitchRewardInfo>, rewards));
+    return rewards;
+}
+
 QString AppController::getPluginDirectory() const {
     QString appDir = QCoreApplication::applicationDirPath();
     return QDir(appDir).filePath("plugins");

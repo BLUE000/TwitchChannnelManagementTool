@@ -97,6 +97,7 @@ public:
     void requestTts(const QString&, const QString&, int, int, int) override {}
     void sendToObs(const QString&, const QJsonObject&) override {}
     void postDiscordWebhook(const QString&, const QJsonObject&) override {}
+    QList<TwitchRewardInfo> getChannelPointRewards() override { return {}; }
     QString getPluginDirectory() const override { return m_dir; }
     QString getCipherKey() const override { return "TestKey1234567890"; }
     bool writeEncryptedFile(const QString&, const QByteArray&) override { return false; }

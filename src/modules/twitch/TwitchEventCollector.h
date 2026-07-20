@@ -28,6 +28,7 @@ public slots:
     void connectToTwitch(const QString& channelName, const QString& oauthToken);
     void disconnectFromTwitch();
     void postChatMessage(const QString& message);
+    QList<TwitchRewardInfo> getChannelPointRewards();
 
 private slots:
     // 臨時認証サーバー用

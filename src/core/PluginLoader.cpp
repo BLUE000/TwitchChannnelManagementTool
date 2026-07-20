@@ -29,6 +29,11 @@ void PluginContext::postDiscordWebhook(const QString& webhookUrl, const QJsonObj
     m_base->postDiscordWebhook(webhookUrl, payload);
 }
 
+QList<TwitchRewardInfo> PluginContext::getChannelPointRewards() {
+    if (!m_base) return {};
+    return m_base->getChannelPointRewards();
+}
+
 QString PluginContext::getPluginDirectory() const {
     QDir dir(m_base->getPluginDirectory());
     return dir.filePath(m_pluginId);

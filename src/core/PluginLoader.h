@@ -28,6 +28,7 @@ public:
     void requestTts(const QString& text, const QString& speakerId, int speed, int pitch, int volume) override;
     void sendToObs(const QString& action, const QJsonObject& payload) override;
     void postDiscordWebhook(const QString& webhookUrl, const QJsonObject& payload) override;
+    QList<TwitchRewardInfo> getChannelPointRewards() override;
     QString getPluginDirectory() const override;
     QString getCipherKey() const override;
 
