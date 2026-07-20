@@ -26,6 +26,8 @@ MainWindow::MainWindow(AppController* controller, QWidget* parent)
     , m_settingsTab(nullptr)
 {
     ui->setupUi(this);
+    resize(1200, 800);
+    setMinimumSize(800, 600);
     setupUiManual();
     applyTheme();
 
