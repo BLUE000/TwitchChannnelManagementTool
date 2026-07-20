@@ -210,6 +210,11 @@ Q_DECLARE_INTERFACE(IChannelPlugin, IChannelPlugin_iid)
 Q_DECLARE_METATYPE(TwitchRewardInfo)
 ```
 
+### 3.1. プラグイン実装時の注意点・フリーズ防止ガイドライン
+1. **プラグインファイル（DLL）の重複・競合の回避**: `plugins/` フォルダ内に同一プラグインの旧名DLL（例: `ChannelPointPlugin.dll` と `libChannelPointPlugin.dll`）が混在しないよう管理・クリーンアップすること。
+2. **初期化メソッド内での同期ブロッキング処理の禁止**: `initialize()` や `createWidget()` はGUIスレッド上で同期実行されるため、タイムアウトなしの同期通信や重い処理を記述しないこと（`QThread` や非同期タイマーへ委譲すること）。
+3. **ディスク I/O 待ちの最小化**: `iconPngData()` やアセット取得時の `QFile` 読み込みはメモリキャッシュ（.qrcリソース等）を利用し、GUIスレッドの遅延を防ぐこと。
+
 ---
 
 ## 4. データ保存・暗号化（TransCipher）設計

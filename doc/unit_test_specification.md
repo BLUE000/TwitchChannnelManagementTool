@@ -53,6 +53,9 @@
   - **検証内容**:
     1. `PluginContext::writeLog()` を呼び出して任意のテストログを出力した際、ホスト側の `Logger` シングルトンを経由して `logs/` ディレクトリ内に暗号化ログファイルが正常に生成されること。
     2. 生成されたログファイルを読み込み、復号した際に、出力したログレベル（level）、クラス名（className）、関数名（funcName）、説明文（description）がフォーマット通りに記録されていることを検証する。
+* **UT_LDR_008: チャンネルポイント報酬一覧取得APIテスト (ICoreContext::getChannelPointRewards)**
+  - **検証内容**:
+    1. プラグイン側から `ICoreContext::getChannelPointRewards()` を呼び出した際、`PluginContext` 経由でホストコアへ処理が委譲され、Twitch Helix REST APIから取得された `QList<TwitchRewardInfo>`（またはOAuth未接続時のフォールバックリスト）が正しく返却されることを確認する。
 
 
 ### 2.3. TTS連携モジュール単体テスト (`src/modules/tts/`)
