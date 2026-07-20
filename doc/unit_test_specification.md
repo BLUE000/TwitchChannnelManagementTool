@@ -56,6 +56,14 @@
 * **UT_LDR_008: チャンネルポイント報酬一覧取得APIテスト (ICoreContext::getChannelPointRewards)**
   - **検証内容**:
     1. プラグイン側から `ICoreContext::getChannelPointRewards()` を呼び出した際、`PluginContext` 経由でホストコアへ処理が委譲され、Twitch Helix REST APIから取得された `QList<TwitchRewardInfo>`（またはOAuth未接続時のフォールバックリスト）が正しく返却されることを確認する。
+* **UT_LDR_009: DLLファイル名柔軟マッピングテスト (libプレフィックス補正)**
+  - **検証内容**:
+    1. `settings.bin` 内に `"CommentManagerPlugin.dll"` の形式で保存されている場合でも、ディスク上の `"libCommentManagerPlugin.dll"` と正しくマッチングし、同一プラグインとして認識・ロードされることを確認する。
+
+### 2.3. 設定画面モジュール単体テスト (`src/ui/`)
+* **UT_STG_001: プラグイン一覧メタデータ取得テスト (loader.unload非使用検証)**
+  - **検証内容**:
+    1. `SettingsTab::refreshPluginList()` が実行された際、`QPluginLoader::unload()` を直接呼び出さずに `PluginLoader` 経由で各プラグインのメタデータ（名前、バージョン、説明、アイコン）が安全に取得・保持されることを確認する。
 
 
 ### 2.3. TTS連携モジュール単体テスト (`src/modules/tts/`)

@@ -114,6 +114,29 @@ void MainWindow::applyTheme() {
     this->setStyleSheet(qss);
 }
 
+static bool isPluginEnabledInSet(const QString& filename, const QSet<QString>& enabledSet) {
+    if (enabledSet.contains(filename)) return true;
+    if (filename.startsWith("lib", Qt::CaseInsensitive) && enabledSet.contains(filename.mid(3))) return true;
+    if (!filename.startsWith("lib", Qt::CaseInsensitive) && enabledSet.contains("lib" + filename)) return true;
+    return false;
+}
+
+static QString findMatchingPluginFile(const QString& targetFilename, const QMap<QString, QString>& filenameToFullPath) {
+    if (filenameToFullPath.contains(targetFilename)) {
+        return filenameToFullPath[targetFilename];
+    }
+    QString altName = targetFilename;
+    if (targetFilename.startsWith("lib", Qt::CaseInsensitive)) {
+        altName = targetFilename.mid(3);
+    } else {
+        altName = "lib" + targetFilename;
+    }
+    if (filenameToFullPath.contains(altName)) {
+        return filenameToFullPath[altName];
+    }
+    return QString();
+}
+
 void MainWindow::syncPluginTabs() {
     // 現在の選択位置を記憶
     int currentIdx = m_sidebar->currentRow();
@@ -170,7 +193,7 @@ void MainWindow::syncPluginTabs() {
     QList<LoadedPlugin> loaded = m_controller->pluginLoader()->loadedPlugins();
     for (const LoadedPlugin& lp : loaded) {
         QFileInfo fi(lp.filePath);
-        if (!enabledSet.contains(fi.fileName())) {
+        if (!isPluginEnabledInSet(fi.fileName(), enabledSet)) {
             m_controller->pluginLoader()->unloadPlugin(lp.filePath);
         }
     }
@@ -188,23 +211,25 @@ void MainWindow::syncPluginTabs() {
 
     for (int i = 0; i < pluginOrder.size(); ++i) {
         QString filename = pluginOrder[i].toString();
-        if (enabledSet.contains(filename) && filenameToFullPath.contains(filename)) {
-            QString fullPath = filenameToFullPath[filename];
-            IChannelPlugin* plugin = m_controller->pluginLoader()->loadPlugin(fullPath, m_controller, m_stackedWidget);
-            if (plugin) {
-                // ロード済みの LoadedPlugin 情報を取得
-                LoadedPlugin lp;
-                for (const LoadedPlugin& l : m_controller->pluginLoader()->loadedPlugins()) {
-                    if (l.filePath == fullPath) {
-                        lp = l;
-                        break;
+        if (isPluginEnabledInSet(filename, enabledSet)) {
+            QString fullPath = findMatchingPluginFile(filename, filenameToFullPath);
+            if (!fullPath.isEmpty()) {
+                IChannelPlugin* plugin = m_controller->pluginLoader()->loadPlugin(fullPath, m_controller, m_stackedWidget);
+                if (plugin) {
+                    // ロード済みの LoadedPlugin 情報を取得
+                    LoadedPlugin lp;
+                    for (const LoadedPlugin& l : m_controller->pluginLoader()->loadedPlugins()) {
+                        if (l.filePath == fullPath) {
+                            lp = l;
+                            break;
+                        }
                     }
+                    
+                    TabMapping tm;
+                    tm.filePath = fullPath;
+                    tm.widget = lp.widget;
+                    newTabs.append(tm);
                 }
-                
-                TabMapping tm;
-                tm.filePath = fullPath;
-                tm.widget = lp.widget;
-                newTabs.append(tm);
             }
         }
     }

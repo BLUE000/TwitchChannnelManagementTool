@@ -215,6 +215,13 @@ Q_DECLARE_METATYPE(TwitchRewardInfo)
 2. **初期化メソッド内での同期ブロッキング処理の禁止**: `initialize()` や `createWidget()` はGUIスレッド上で同期実行されるため、タイムアウトなしの同期通信や重い処理を記述しないこと（`QThread` や非同期タイマーへ委譲すること）。
 3. **ディスク I/O 待ちの最小化**: `iconPngData()` やアセット取得時の `QFile` 読み込みはメモリキャッシュ（.qrcリソース等）を利用し、GUIスレッドの遅延を防ぐこと。
 
+### 3.2. ホストアプリ側プラグイン制御・互換性仕様
+1. **QPluginLoader::unload() の絶対禁止（デッドロック防止）**:
+   - Qtの仕様上、`QSqlDatabase` (SQLiteドライバー) や静的オブジェクトを含むDLLを `QPluginLoader::unload()` で途中で解除すると、Qt内部の静的クリーンアップ処理によりメインスレッドでデッドロックが確実に発生します。
+   - ホストアプリ（`SettingsTab` および `PluginLoader`）は設定画面でのメタデータ取得時やアンロード時であっても `QPluginLoader::unload()` を直接呼び出さず、プロセスの終了までメモリ上に安全に維持します。
+2. **DLLファイル名（`lib` プレフィックス）の柔軟マッピング**:
+   - ビルド環境の違いによるファイル名変更（例: `CommentManagerPlugin.dll` ⇆ `libCommentManagerPlugin.dll`）が発生した場合でも設定データ（`settings.bin`）との互換性を保つため、ホストアプリは `lib` プレフィックスの有無の違いを吸収して自動的に同一プラグインとして認識・ロードします。
+
 ---
 
 ## 4. データ保存・暗号化（TransCipher）設計

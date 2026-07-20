@@ -54,6 +54,9 @@ public:
     // 個別のプラグインをロードする
     IChannelPlugin* loadPlugin(const QString& filePath, ICoreContext* context, QWidget* uiParent = nullptr);
 
+    // プラグインを取得または安全にロードする (unloadの呼び出しを防ぎデッドロックを回避)
+    IChannelPlugin* getOrLoadPlugin(const QString& filePath, ICoreContext* context);
+
     // 個別のプラグインをアンロードする
     bool unloadPlugin(const QString& filePath);
 

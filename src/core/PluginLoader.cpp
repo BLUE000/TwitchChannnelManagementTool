@@ -241,6 +241,13 @@ IChannelPlugin* PluginLoader::loadPlugin(const QString& filePath, ICoreContext* 
     return plugin;
 }
 
+IChannelPlugin* PluginLoader::getOrLoadPlugin(const QString& filePath, ICoreContext* context) {
+    if (m_loadedPlugins.contains(filePath)) {
+        return m_loadedPlugins[filePath].instance;
+    }
+    return loadPlugin(filePath, context, nullptr);
+}
+
 bool PluginLoader::unloadPlugin(const QString& filePath) {
     if (!m_loadedPlugins.contains(filePath)) {
         return false;

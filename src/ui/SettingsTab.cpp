@@ -242,6 +242,24 @@ QByteArray SettingsTab::decryptToken(const QByteArray& token) {
     return token;
 }
 
+static bool isPluginEnabledInSet(const QString& filename, const QSet<QString>& enabledSet) {
+    if (enabledSet.contains(filename)) return true;
+    if (filename.startsWith("lib", Qt::CaseInsensitive) && enabledSet.contains(filename.mid(3))) return true;
+    if (!filename.startsWith("lib", Qt::CaseInsensitive) && enabledSet.contains("lib" + filename)) return true;
+    return false;
+}
+
+static int getPluginOrderIndex(const QString& filename, const QMap<QString, int>& orderMap) {
+    if (orderMap.contains(filename)) return orderMap[filename];
+    if (filename.startsWith("lib", Qt::CaseInsensitive) && orderMap.contains(filename.mid(3))) {
+        return orderMap[filename.mid(3)];
+    }
+    if (!filename.startsWith("lib", Qt::CaseInsensitive) && orderMap.contains("lib" + filename)) {
+        return orderMap["lib" + filename];
+    }
+    return 9999;
+}
+
 void SettingsTab::loadSettings() {
     QString appDir = QCoreApplication::applicationDirPath();
     QString settingsPath = QDir(appDir).filePath("settings.bin");
@@ -290,19 +308,19 @@ void SettingsTab::loadSettings() {
         enabledSet.insert(enabledPlugins[i].toString());
     }
     
-    // m_pluginItems の有効フラグと順序を再配置
+    // m_pluginItems の有効フラグと順序を再配置 (lib プレフィックスの違いを柔軟に判定)
     for (PluginSettingsItem& item : m_pluginItems) {
         QFileInfo fi(item.filePath);
         QString filename = fi.fileName();
-        item.enabled = enabledSet.contains(filename);
+        item.enabled = isPluginEnabledInSet(filename, enabledSet);
     }
     
     // ソート
     std::sort(m_pluginItems.begin(), m_pluginItems.end(), [&orderMap](const PluginSettingsItem& a, const PluginSettingsItem& b) {
         QFileInfo fiA(a.filePath);
         QFileInfo fiB(b.filePath);
-        int indexA = orderMap.contains(fiA.fileName()) ? orderMap[fiA.fileName()] : 9999;
-        int indexB = orderMap.contains(fiB.fileName()) ? orderMap[fiB.fileName()] : 9999;
+        int indexA = getPluginOrderIndex(fiA.fileName(), orderMap);
+        int indexB = getPluginOrderIndex(fiB.fileName(), orderMap);
         return indexA < indexB;
     });
     
@@ -380,28 +398,20 @@ void SettingsTab::refreshPluginList() {
     QList<QString> list = m_controller->pluginLoader()->scanPlugins();
     
     for (const QString& filePath : list) {
-        // 詳細情報抽出のため一時的にロード
-        QPluginLoader loader(filePath);
-        QObject* instance = loader.instance();
-        if (instance) {
-            IChannelPlugin* plugin = qobject_cast<IChannelPlugin*>(instance);
-            if (plugin) {
-                PluginSettingsItem item;
-                item.filePath = filePath;
-                item.name = plugin->pluginName();
-                item.version = plugin->pluginVersion();
-                item.description = plugin->pluginDescription();
-                item.iconPng = plugin->iconPngData();
-                item.enabled = false;
-                m_pluginItems.append(item);
-            } else {
-                Logger::instance().log("ERROR", "SettingsTab", "refreshPluginList",
-                                       QString("Cast failed for %1: Not implementing IChannelPlugin").arg(filePath));
-            }
-            loader.unload();
+        // PluginLoader 経由で取得・保持（デッドロックを引き起こす loader.unload() は絶対に使用しない）
+        IChannelPlugin* plugin = m_controller->pluginLoader()->getOrLoadPlugin(filePath, m_controller);
+        if (plugin) {
+            PluginSettingsItem item;
+            item.filePath = filePath;
+            item.name = plugin->pluginName();
+            item.version = plugin->pluginVersion();
+            item.description = plugin->pluginDescription();
+            item.iconPng = plugin->iconPngData();
+            item.enabled = false;
+            m_pluginItems.append(item);
         } else {
             Logger::instance().log("ERROR", "SettingsTab", "refreshPluginList",
-                                   QString("Failed to load DLL %1: %2").arg(filePath).arg(loader.errorString()));
+                                   QString("Failed to get or load plugin: %1").arg(filePath));
         }
     }
 }
