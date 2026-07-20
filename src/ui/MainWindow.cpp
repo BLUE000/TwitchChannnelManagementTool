@@ -465,13 +465,24 @@ void MainWindow::restoreWindowState() {
         restoreState(state);
     }
 
-    // フェールセーフ：画面外チェック
-    QScreen* primary = QGuiApplication::primaryScreen();
-    if (primary) {
-        QRect screenGeom = primary->geometry();
-        if (!screenGeom.intersects(geometry())) {
-            // 画面外に完全に飛び出している場合は中央に再配置
-            setGeometry(QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter, size(), screenGeom));
+    // 最小化状態で復元された場合は解除（画面に確実に表示するため）
+    if (isMinimized()) {
+        setWindowState(windowState() & ~Qt::WindowMinimized);
+    }
+
+    // フェールセーフ：マルチモニター切断や破損による画面外・極小サイズ防止
+    bool isOnAnyScreen = false;
+    for (QScreen* screen : QGuiApplication::screens()) {
+        if (screen->geometry().intersects(geometry())) {
+            isOnAnyScreen = true;
+            break;
+        }
+    }
+
+    if (!isOnAnyScreen || width() < 400 || height() < 300) {
+        QScreen* primary = QGuiApplication::primaryScreen();
+        if (primary) {
+            setGeometry(QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter, QSize(1200, 800), primary->geometry()));
         }
     }
 

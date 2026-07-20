@@ -28,8 +28,10 @@ int main(int argc, char *argv[]) {
     // 4. TrustChain ウォーターマークの適用 (非公式ビルドや認証失敗時の表示制御)
     TrustChain::QtHelper::applyWatermark(&window, authStatus);
     
-    // 5. ウィンドウ表示とイベントループ開始
+    // 5. ウィンドウ表示とイベントループ開始 (最前面化・アクティブ化の保証)
     window.show();
+    window.raise();
+    window.activateWindow();
     
     int execResult = app.exec();
     
