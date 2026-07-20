@@ -183,11 +183,32 @@ IChannelPlugin* PluginLoader::loadPlugin(const QString& filePath, ICoreContext* 
     // PluginContext の生成 (プラグインごとに独立した暗号化/復号コンテキストを提供)
     PluginContext* pluginContext = new PluginContext(context, plugin->pluginId());
     
-    // 初期化
-    plugin->initialize(pluginContext);
+    // 初期化 (例外・ハングに対するログとガード)
+    Logger::instance().log("INFO", "PluginLoader", "loadPlugin", 
+                           QString("Initializing plugin: %1").arg(plugin->pluginName()));
+    try {
+        plugin->initialize(pluginContext);
+    } catch (const std::exception& e) {
+        Logger::instance().log("ERROR", "PluginLoader", "loadPlugin", 
+                               QString("Exception in plugin initialize (%1): %2").arg(plugin->pluginName(), e.what()));
+    } catch (...) {
+        Logger::instance().log("ERROR", "PluginLoader", "loadPlugin", 
+                               QString("Unknown exception in plugin initialize (%1)").arg(plugin->pluginName()));
+    }
     
     // GUIウィジェットの生成
-    QWidget* widget = plugin->createWidget(uiParent);
+    Logger::instance().log("INFO", "PluginLoader", "loadPlugin", 
+                           QString("Creating widget for plugin: %1").arg(plugin->pluginName()));
+    QWidget* widget = nullptr;
+    try {
+        widget = plugin->createWidget(uiParent);
+    } catch (const std::exception& e) {
+        Logger::instance().log("ERROR", "PluginLoader", "loadPlugin", 
+                               QString("Exception in plugin createWidget (%1): %2").arg(plugin->pluginName(), e.what()));
+    } catch (...) {
+        Logger::instance().log("ERROR", "PluginLoader", "loadPlugin", 
+                               QString("Unknown exception in plugin createWidget (%1)").arg(plugin->pluginName()));
+    }
     
     // シグナル・スロット接続 (Lambdaを使用して pure virtual インターフェースへ接続)
     QList<QMetaObject::Connection> connections;

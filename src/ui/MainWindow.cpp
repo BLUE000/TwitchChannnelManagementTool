@@ -9,6 +9,7 @@
 #include <QJsonArray>
 #include <QDir>
 #include <QFileInfo>
+#include <QTimer>
 #include "logger/Logger.h"
 #include "cipher_engine.h"
 
@@ -38,11 +39,11 @@ MainWindow::MainWindow(AppController* controller, QWidget* parent)
     // 設定保存時のシグナルをバインドして、プラグイン表示タブを再同期
     connect(m_settingsTab, &SettingsTab::settingsSaved, this, &MainWindow::onSettingsSaved);
 
-    // 初期タブ同期
-    syncPluginTabs();
-
     // 保存位置の復元
     restoreWindowState();
+
+    // 初期タブ同期（プラグイン読み込みがメインウィンドウ表示をブロッキングするのを防ぐため非同期実行）
+    QTimer::singleShot(0, this, &MainWindow::syncPluginTabs);
 }
 
 MainWindow::~MainWindow() {
