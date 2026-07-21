@@ -1,6 +1,7 @@
 #include "ObsHttpWebSocketServer.h"
 #include <QCoreApplication>
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QUrl>
 #include <QJsonDocument>
@@ -128,6 +129,7 @@ void ObsHttpWebSocketServer::handleHttpRequest(QTcpSocket* socket, const QByteAr
         QByteArray response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nBad Request";
         socket->write(response);
         socket->flush();
+        socket->waitForBytesWritten(1000);
         socket->disconnectFromHost();
         return;
     }
@@ -137,6 +139,7 @@ void ObsHttpWebSocketServer::handleHttpRequest(QTcpSocket* socket, const QByteAr
         QByteArray response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nBad Request";
         socket->write(response);
         socket->flush();
+        socket->waitForBytesWritten(1000);
         socket->disconnectFromHost();
         return;
     }
@@ -157,44 +160,64 @@ void ObsHttpWebSocketServer::handleHttpRequest(QTcpSocket* socket, const QByteAr
         QByteArray response = "HTTP/1.1 405 Method Not Allowed\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nMethod Not Allowed";
         socket->write(response);
         socket->flush();
+        socket->waitForBytesWritten(1000);
         socket->disconnectFromHost();
         return;
     }
     
     if (path.startsWith("/assets/overlay/")) {
-        path = path.mid(7); // "/assets" を除去して "/overlay/..." に変換
+        path = path.mid(7); // "/assets" を除去
     }
     
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString physicalPath;
+
     if (path.startsWith("/overlay/")) {
-        QString appDir = QCoreApplication::applicationDirPath();
-        // "/overlay/..." のパスを "assets/overlay/..." にマップする
-        QString physicalPath = QDir(appDir).filePath("assets" + path);
-        
-        QFile file(physicalPath);
-        if (file.exists() && file.open(QIODevice::ReadOnly)) {
-            QByteArray fileData = file.readAll();
-            file.close();
-            
-            QString contentType = getContentType(physicalPath);
-            QByteArray response;
-            response.append("HTTP/1.1 200 OK\r\n");
-            response.append("Content-Type: " + contentType.toUtf8() + "\r\n");
-            response.append("Content-Length: " + QByteArray::number(fileData.size()) + "\r\n");
-            response.append("Access-Control-Allow-Origin: *\r\n");
-            response.append("Connection: close\r\n\r\n");
-            
-            socket->write(response);
-            socket->write(fileData);
-            socket->flush();
-            socket->disconnectFromHost();
-            return;
+        physicalPath = QDir(appDir).filePath("assets" + path);
+    } else {
+        physicalPath = QDir(appDir).filePath("assets/overlay" + (path.startsWith("/") ? path : "/" + path));
+    }
+    
+    QFile file(physicalPath);
+
+    // 2. 見つからない場合のフォールバック探索 (assets/overlay 以下のサブディレクトリ自動探知)
+    if (!file.exists()) {
+        QString filename = QFileInfo(path).fileName();
+        if (filename.isEmpty() || path.endsWith("/")) filename = "overlay.html";
+
+        QDir overlayDir(QDir(appDir).filePath("assets/overlay"));
+        QDirIterator it(overlayDir.absolutePath(), QStringList() << filename, QDir::Files, QDirIterator::Subdirectories);
+        if (it.hasNext()) {
+            physicalPath = it.next();
+            file.setFileName(physicalPath);
         }
+    }
+    
+    if (file.exists() && file.open(QIODevice::ReadOnly)) {
+        QByteArray fileData = file.readAll();
+        file.close();
+        
+        QString contentType = getContentType(physicalPath);
+        QByteArray response;
+        response.append("HTTP/1.1 200 OK\r\n");
+        response.append("Content-Type: " + contentType.toUtf8() + "\r\n");
+        response.append("Content-Length: " + QByteArray::number(fileData.size()) + "\r\n");
+        response.append("Access-Control-Allow-Origin: *\r\n");
+        response.append("Connection: close\r\n\r\n");
+        
+        socket->write(response);
+        socket->write(fileData);
+        socket->flush();
+        socket->waitForBytesWritten(1000);
+        socket->disconnectFromHost();
+        return;
     }
     
     // 404 Not Found
     QByteArray response = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nFile Not Found";
     socket->write(response);
     socket->flush();
+    socket->waitForBytesWritten(1000);
     socket->disconnectFromHost();
 }
 
