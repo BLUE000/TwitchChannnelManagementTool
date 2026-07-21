@@ -221,6 +221,9 @@ Q_DECLARE_METATYPE(TwitchRewardInfo)
    - ホストアプリ（`SettingsTab` および `PluginLoader`）は設定画面でのメタデータ取得時やアンロード時であっても `QPluginLoader::unload()` を直接呼び出さず、プロセスの終了までメモリ上に安全に維持します。
 2. **DLLファイル名（`lib` プレフィックス）の柔軟マッピング**:
    - ビルド環境の違いによるファイル名変更（例: `CommentManagerPlugin.dll` ⇆ `libCommentManagerPlugin.dll`）が発生した場合でも設定データ（`settings.bin`）との互換性を保つため、ホストアプリは `lib` プレフィックスの有無の違いを吸収して自動的に同一プラグインとして認識・ロードします。
+3. **OBS HTTP サーバーパケット分割（パケットバッファリング）制御**:
+   - ブラウザやOBSブラウザソースからの HTTP GET リクエスト受診時、TCPパケット分割や遅延によりヘッダーが分割されて届いた際に、不完全なデータでソケットが即時切断（`ERR_EMPTY_RESPONSE`）されるのを防ぎます。
+   - `onTcpReadyRead()` で `socket->peek()` を用いて HTTP ヘッダー終端（`\r\n\r\n` または `\n\n`）の受信完了を確認するまでソケットバッファを読み出さずに安全に保持します。
 
 ---
 

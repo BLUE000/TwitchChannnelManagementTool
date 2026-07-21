@@ -97,9 +97,15 @@ void ObsHttpWebSocketServer::onTcpReadyRead() {
     QByteArray peekData = socket->peek(4096);
     
     // WebSocketアップグレード判定
-    if (peekData.contains("Upgrade: websocket") || peekData.contains("upgrade: websocket")) {
+    if (peekData.contains("Upgrade: websocket") || peekData.contains("upgrade: websocket") || peekData.contains("Upgrade: WebSocket")) {
         socket->disconnect(this); // HTTP用のシグナル接続を切断
         m_webSocketServer->handleConnection(socket);
+        return;
+    }
+    
+    // HTTPヘッダーの受信完了判定 (\r\n\r\n または \n\n が届くまでソケットバッファを維持)
+    if (!peekData.contains("\r\n\r\n") && !peekData.contains("\n\n")) {
+        // TCPパケットが分割されて届いていないため、次の readyRead を待つ
         return;
     }
     

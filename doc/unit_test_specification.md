@@ -81,4 +81,7 @@
 * **UT_OBS_002: Discord Webhook ペイロードシリアライズテスト**
   - **検証内容**:
     - `postDiscordWebhook` 用に構築された `payload`（`QJsonObject`）が、正しい JSON フォーマットにシリアライズされ、HTTP 送信用の `QByteArray` ボディデータへ正確に変換されることを確認する。
+* **UT_OBS_003: TCPパケット分割・HTTPヘッダーバッファリングテスト (ERR_EMPTY_RESPONSE防止)**
+  - **検証内容**:
+    - HTTP GET リクエスト送信時、パケットが分割されてヘッダー終端（`\r\n\r\n` または `\n\n`）が未到達の段階ではソケットが切断されず、全データ到達後に正常な 200 OK / 404 Not Found レスポンスが返却されることを検証する。
 
