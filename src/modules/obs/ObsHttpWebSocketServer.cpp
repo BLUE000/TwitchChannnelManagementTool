@@ -118,14 +118,20 @@ void ObsHttpWebSocketServer::onTcpDisconnected() {
 void ObsHttpWebSocketServer::handleHttpRequest(QTcpSocket* socket, const QByteArray& requestData) {
     QString requestStr = QString::fromUtf8(requestData);
     QStringList lines = requestStr.split("\r\n");
-    if (lines.isEmpty()) {
-        socket->close();
+    if (lines.isEmpty() || lines[0].trimmed().isEmpty()) {
+        QByteArray response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nBad Request";
+        socket->write(response);
+        socket->flush();
+        socket->disconnectFromHost();
         return;
     }
     
     QStringList firstLineTokens = lines[0].split(" ");
     if (firstLineTokens.size() < 2) {
-        socket->close();
+        QByteArray response = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nBad Request";
+        socket->write(response);
+        socket->flush();
+        socket->disconnectFromHost();
         return;
     }
     
@@ -142,8 +148,9 @@ void ObsHttpWebSocketServer::handleHttpRequest(QTcpSocket* socket, const QByteAr
     path = QUrl::fromPercentEncoding(path.toUtf8());
     
     if (method != "GET") {
-        QByteArray response = "HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n";
+        QByteArray response = "HTTP/1.1 405 Method Not Allowed\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nMethod Not Allowed";
         socket->write(response);
+        socket->flush();
         socket->disconnectFromHost();
         return;
     }
@@ -172,6 +179,7 @@ void ObsHttpWebSocketServer::handleHttpRequest(QTcpSocket* socket, const QByteAr
             
             socket->write(response);
             socket->write(fileData);
+            socket->flush();
             socket->disconnectFromHost();
             return;
         }
@@ -180,6 +188,7 @@ void ObsHttpWebSocketServer::handleHttpRequest(QTcpSocket* socket, const QByteAr
     // 404 Not Found
     QByteArray response = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nFile Not Found";
     socket->write(response);
+    socket->flush();
     socket->disconnectFromHost();
 }
 
